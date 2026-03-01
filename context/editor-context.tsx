@@ -27,7 +27,7 @@ interface EditorContextValue {
   openFile: (path: string, content: string, sha?: string, options?: OpenFileOptions) => void
   closeFile: (path: string) => void
   updateFileContent: (path: string, content: string) => void
-  markClean: (path: string) => void
+  markClean: (path: string, newSha?: string) => void
   getFile: (path: string) => OpenFile | undefined
 }
 
@@ -90,9 +90,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     ))
   }, [])
 
-  const markClean = useCallback((path: string) => {
+  const markClean = useCallback((path: string, newSha?: string) => {
     setFiles(prev => prev.map(f =>
-      f.path === path ? { ...f, originalContent: f.content, dirty: false } : f
+      f.path === path ? { ...f, originalContent: f.content, dirty: false, ...(newSha ? { sha: newSha } : {}) } : f
     ))
   }, [])
 

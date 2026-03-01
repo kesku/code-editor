@@ -15,7 +15,7 @@ import { ThemeSwitcher } from '@/components/theme-switcher'
 import { QuickOpen } from '@/components/quick-open'
 import { ShortcutsOverlay } from '@/components/shortcuts-overlay'
 import { CommandPalette, type CommandId } from '@/components/command-palette'
-import { fetchFileContents } from '@/lib/github-client'
+import { fetchFileContents, createOrUpdateFile } from '@/lib/github-client'
 import { TerminalPanel } from '@/components/terminal-panel'
 import { EnginePanel } from '@/components/engine-panel'
 
@@ -254,7 +254,7 @@ const AGENT_MAX = 600
 
 function EditorLayout() {
   const { repo } = useRepo()
-  const { files, openFile } = useEditor()
+  const { files, activeFile, openFile, getFile, markClean } = useEditor()
   const { status } = useGateway()
   const [explorerWidth, setExplorerWidth] = useState(240)
   const [agentWidth, setAgentWidth] = useState(360)
@@ -265,11 +265,28 @@ function EditorLayout() {
   const [commandPaletteVisible, setCommandPaletteVisible] = useState(false)
   const [terminalVisible, setTerminalVisible] = useState(false)
   const [terminalHeight, setTerminalHeight] = useState(260)
-  const [sidebarTab, setSidebarTab] = useState<'agent' | 'engine'>('agent')
+  const [engineVisible, setEngineVisible] = useState(false)
   const [isTauriDesktop, setIsTauriDesktop] = useState(false)
   const [isMacTauri, setIsMacTauri] = useState(false)
 
   const dirtyCount = files.filter(f => f.dirty).length
+
+  const saveActiveFile = useCallback(async () => {
+    if (!repo || !activeFile) return
+    const file = getFile(activeFile)
+    if (!file || file.kind !== 'text' || !file.dirty) return
+    try {
+      const { sha } = await createOrUpdateFile(repo.fullName, file.path, {
+        content: file.content,
+        message: `Update ${file.path}`,
+        sha: file.sha,
+        branch: repo.branch,
+      })
+      markClean(file.path, sha)
+    } catch (err) {
+      console.error('Failed to save file:', err)
+    }
+  }, [repo, activeFile, getFile, markClean])
 
   // Handle file-select events from explorer
   useEffect(() => {
@@ -313,6 +330,7 @@ function EditorLayout() {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
         if (!e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); setCommandPaletteVisible(true); return }
+        if (e.key === 's') { e.preventDefault(); void saveActiveFile(); return }
         if (e.key === 'b') { e.preventDefault(); setExplorerVisible(v => !v) }
         if (e.key === 'j') { e.preventDefault(); setAgentOpen(v => !v) }
         if (e.key === 'p') { e.preventDefault(); setQuickOpenVisible(v => !v) }
@@ -327,7 +345,7 @@ function EditorLayout() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [saveActiveFile])
 
   useEffect(() => {
     const tauriWindow = window as Window & {
@@ -443,37 +461,13 @@ function EditorLayout() {
           />
         </button>
 
-        {/* Sidebar: Agent + Engine tabs */}
+        {/* Sidebar: Agent */}
         {agentOpen && (
           <>
             <ResizeHandle direction="horizontal" onResize={handleAgentResize} />
             <div className="shrink-0 flex flex-col overflow-hidden border-l border-[var(--border)]" style={{ width: agentWidth }}>
-              {/* Sidebar tab bar */}
-              <div className="flex items-center h-9 bg-[var(--bg-secondary)] border-b border-[var(--border)] px-2 gap-1 shrink-0">
-                <button
-                  onClick={() => setSidebarTab('agent')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors cursor-pointer ${sidebarTab === 'agent'
-                      ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                    }`}
-                >
-                  <Icon icon="lucide:sparkles" width={12} height={12} />
-                  Agent
-                </button>
-                <button
-                  onClick={() => setSidebarTab('engine')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors cursor-pointer ${sidebarTab === 'engine'
-                      ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                    }`}
-                >
-                  <Icon icon="lucide:cpu" width={12} height={12} />
-                  Gateway Engine
-                </button>
-              </div>
-              {/* Tab content */}
               <div className="flex-1 min-h-0 overflow-hidden">
-                {sidebarTab === 'agent' ? <AgentPanel /> : <EnginePanel />}
+                <AgentPanel />
               </div>
             </div>
           </>
@@ -510,6 +504,28 @@ function EditorLayout() {
         onHeightChange={setTerminalHeight}
       />
 
+      {/* Gateway Engine Panel */}
+      {engineVisible && (
+        <div className="shrink-0 border-t border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden" style={{ height: 320 }}>
+          <div className="flex items-center justify-between h-8 px-3 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-secondary)]">
+              <Icon icon="lucide:cpu" width={12} height={12} />
+              Gateway Engine
+            </div>
+            <button
+              onClick={() => setEngineVisible(false)}
+              className="p-0.5 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+              title="Close"
+            >
+              <Icon icon="lucide:x" width={12} height={12} />
+            </button>
+          </div>
+          <div className="h-[calc(100%-2rem)] overflow-auto">
+            <EnginePanel />
+          </div>
+        </div>
+      )}
+
       {/* Status bar */}
       <footer className="flex items-center justify-between px-3 h-6 border-t border-[var(--border)] bg-[var(--bg-elevated)] text-[9px] text-[var(--text-tertiary)] shrink-0">
         <div className="flex items-center gap-3">
@@ -530,6 +546,15 @@ function EditorLayout() {
           >
             <Icon icon="lucide:terminal" width={10} height={10} />
             <span>Terminal</span>
+          </button>
+          <button
+            onClick={() => setEngineVisible(v => !v)}
+            className={`flex items-center gap-1 cursor-pointer hover:text-[var(--text-secondary)] transition-colors ${engineVisible ? 'text-[var(--brand)]' : ''
+              }`}
+            title="Toggle Gateway Engine"
+          >
+            <Icon icon="lucide:cpu" width={10} height={10} />
+            <span>Gateway Engine</span>
           </button>
           <span>code-editor v0.1.0</span>
         </div>
