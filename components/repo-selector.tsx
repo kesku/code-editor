@@ -20,16 +20,20 @@ export function RepoSelector() {
   const [editing, setEditing] = useState(!repo)
   const [ownerInput, setOwnerInput] = useState(repo?.owner ?? 'OpenKnots')
   const [repoInput, setRepoInput] = useState(repo?.repo ?? '')
+  const [branchInput, setBranchInput] = useState(repo?.branch ?? 'main')
   const [showPrivate, setShowPrivate] = useState(false)
   const [repoOptions, setRepoOptions] = useState<RepoOption[]>([])
   const [repoLoading, setRepoLoading] = useState(false)
   const [repoError, setRepoError] = useState<string | null>(null)
   const [repoDropdown, setRepoDropdown] = useState(false)
   const [branchDropdown, setBranchDropdown] = useState(false)
+  const [editBranchDropdown, setEditBranchDropdown] = useState(false)
   const [branches, setBranches] = useState<BranchInfo[]>([])
   const [branchLoading, setBranchLoading] = useState(false)
+  const [branchSearch, setBranchSearch] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const repoDropdownRef = useRef<HTMLDivElement>(null)
+  const editBranchRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -40,6 +44,9 @@ export function RepoSelector() {
       if (repoDropdownRef.current && !repoDropdownRef.current.contains(e.target as Node)) {
         setRepoDropdown(false)
       }
+      if (editBranchRef.current && !editBranchRef.current.contains(e.target as Node)) {
+        setEditBranchDropdown(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -49,16 +56,37 @@ export function RepoSelector() {
     if (!repo) return
     setOwnerInput(repo.owner)
     setRepoInput(repo.repo)
+    setBranchInput(repo.branch)
   }, [repo])
+
+  const fetchBranchesFor = useCallback(async (owner: string, repoName: string) => {
+    setBranchLoading(true)
+    try {
+      const headers = authHeaders()
+      const res = await fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/branches?per_page=100`,
+        { headers }
+      )
+      if (!res.ok) throw new Error('Failed')
+      const data = await res.json() as Array<{ name: string; protected: boolean }>
+      setBranches(data.map(b => ({ name: b.name, protected: b.protected })))
+    } catch {
+      setBranches([])
+    } finally {
+      setBranchLoading(false)
+    }
+  }, [])
 
   const handleSubmit = useCallback(() => {
     const owner = ownerInput.trim()
     const repoName = repoInput.trim()
     if (!owner || !repoName) return
-    setRepo({ owner, repo: repoName, branch: 'main', fullName: `${owner}/${repoName}` })
+    const branch = branchInput.trim() || 'main'
+    setRepo({ owner, repo: repoName, branch, fullName: `${owner}/${repoName}` })
     setRepoDropdown(false)
+    setEditBranchDropdown(false)
     setEditing(false)
-  }, [ownerInput, repoInput, setRepo])
+  }, [ownerInput, repoInput, branchInput, setRepo])
 
   const fetchReposForOwner = useCallback(async (owner: string) => {
     const normalizedOwner = owner.trim()
@@ -124,26 +152,29 @@ export function RepoSelector() {
       .filter(option => !query || option.name.toLowerCase().includes(query))
   }, [repoInput, repoOptions, showPrivate])
 
-  const fetchBranches = useCallback(async () => {
-    if (!repo) return
-    setBranchLoading(true)
-    try {
-      const res = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}/branches?per_page=30`)
-      if (!res.ok) throw new Error('Failed')
-      const data = await res.json() as Array<{ name: string; protected: boolean }>
-      setBranches(data.map(b => ({ name: b.name, protected: b.protected })))
-    } catch {
-      setBranches([])
-    } finally {
-      setBranchLoading(false)
-    }
-  }, [repo])
+  const filteredBranches = useMemo(() => {
+    const query = branchSearch.trim().toLowerCase()
+    if (!query) return branches
+    return branches.filter(b => b.name.toLowerCase().includes(query))
+  }, [branches, branchSearch])
 
   const handleBranchClick = useCallback(() => {
     if (!repo) return
     setBranchDropdown(v => !v)
-    if (branches.length === 0) fetchBranches()
-  }, [repo, branches.length, fetchBranches])
+    setBranchSearch('')
+    if (branches.length === 0) fetchBranchesFor(repo.owner, repo.repo)
+  }, [repo, branches.length, fetchBranchesFor])
+
+  const handleEditBranchClick = useCallback(() => {
+    const owner = ownerInput.trim()
+    const repoName = repoInput.trim()
+    if (!owner || !repoName) return
+    setEditBranchDropdown(v => !v)
+    setBranchSearch('')
+    if (branches.length === 0 || (repo && (repo.owner !== owner || repo.repo !== repoName))) {
+      fetchBranchesFor(owner, repoName)
+    }
+  }, [ownerInput, repoInput, repo, branches.length, fetchBranchesFor])
 
   const switchBranch = useCallback((name: string) => {
     if (!repo) return
@@ -162,6 +193,8 @@ export function RepoSelector() {
             onChange={e => {
               setOwnerInput(e.target.value)
               setRepoInput('')
+              setBranchInput('main')
+              setBranches([])
               setRepoDropdown(true)
             }}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
@@ -176,6 +209,8 @@ export function RepoSelector() {
               value={repoInput}
               onChange={e => {
                 setRepoInput(e.target.value)
+                setBranchInput('main')
+                setBranches([])
                 setRepoDropdown(true)
               }}
               onFocus={() => setRepoDropdown(true)}
@@ -217,7 +252,10 @@ export function RepoSelector() {
                         type="button"
                         onClick={() => {
                           setRepoInput(option.name)
+                          setBranchInput('main')
+                          setBranches([])
                           setRepoDropdown(false)
+                          fetchBranchesFor(ownerInput.trim(), option.name)
                         }}
                         className="flex items-center gap-2 w-full px-3 py-1.5 text-left transition-colors cursor-pointer text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
                       >
@@ -234,6 +272,74 @@ export function RepoSelector() {
             )}
           </div>
         </div>
+
+        {/* Branch selector in editing mode */}
+        <div ref={editBranchRef} className="relative">
+          <button
+            type="button"
+            onClick={handleEditBranchClick}
+            disabled={!ownerInput.trim() || !repoInput.trim()}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--bg-subtle)] border border-[var(--border)] text-[11px] font-mono transition-colors cursor-pointer hover:border-[var(--brand)] disabled:opacity-40 disabled:cursor-not-allowed text-[var(--text-secondary)]"
+            title="Select branch"
+          >
+            <Icon icon="lucide:git-branch" width={11} height={11} className="text-[var(--text-tertiary)]" />
+            <span className="max-w-[80px] truncate">{branchInput}</span>
+            <Icon icon="lucide:chevron-down" width={9} height={9} className="text-[var(--text-tertiary)]" />
+          </button>
+
+          {editBranchDropdown && (
+            <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] shadow-xl z-50 overflow-hidden">
+              <div className="px-2 py-1.5 border-b border-[var(--border)]">
+                <input
+                  type="text"
+                  value={branchSearch}
+                  onChange={e => setBranchSearch(e.target.value)}
+                  placeholder="Filter branches…"
+                  className="w-full px-2 py-1 rounded bg-[var(--bg)] border border-[var(--border)] text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[var(--brand)] font-mono"
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-[240px] overflow-y-auto py-1">
+                {branchLoading ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-secondary)]">
+                    <Icon icon="lucide:loader-2" width={12} height={12} className="animate-spin" />
+                    Loading branches…
+                  </div>
+                ) : filteredBranches.length === 0 ? (
+                  <div className="px-3 py-2 text-[11px] text-[var(--text-tertiary)]">
+                    {branches.length === 0 ? 'No branches found' : 'No matching branches'}
+                  </div>
+                ) : (
+                  filteredBranches.map(b => (
+                    <button
+                      key={b.name}
+                      type="button"
+                      onClick={() => {
+                        setBranchInput(b.name)
+                        setEditBranchDropdown(false)
+                      }}
+                      className={`flex items-center gap-2 w-full px-3 py-1.5 text-left transition-colors cursor-pointer ${
+                        b.name === branchInput
+                          ? 'bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] text-[var(--text-primary)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      <Icon icon="lucide:git-branch" width={12} height={12} className="shrink-0 text-[var(--text-tertiary)]" />
+                      <span className="text-[12px] font-mono truncate">{b.name}</span>
+                      {b.protected && (
+                        <span title="Protected"><Icon icon="lucide:shield" width={10} height={10} className="shrink-0 text-[var(--text-tertiary)]" /></span>
+                      )}
+                      {b.name === branchInput && (
+                        <Icon icon="lucide:check" width={12} height={12} className="shrink-0 ml-auto text-[var(--brand)]" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         <button
           onClick={handleSubmit}
           className="p-1 rounded text-[var(--brand)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
@@ -272,36 +378,50 @@ export function RepoSelector() {
         </button>
 
         {branchDropdown && (
-          <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] shadow-xl z-50 py-1 max-h-[300px] overflow-y-auto">
-            {branchLoading ? (
-              <div className="flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-secondary)]">
-                <Icon icon="lucide:loader-2" width={12} height={12} className="animate-spin" />
-                Loading branches...
-              </div>
-            ) : branches.length === 0 ? (
-              <div className="px-3 py-2 text-[11px] text-[var(--text-tertiary)]">No branches found</div>
-            ) : (
-              branches.map(b => (
-                <button
-                  key={b.name}
-                  onClick={() => switchBranch(b.name)}
-                  className={`flex items-center gap-2 w-full px-3 py-1.5 text-left transition-colors cursor-pointer ${
-                    b.name === repo.branch
-                      ? 'bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] text-[var(--text-primary)]'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  <Icon icon="lucide:git-branch" width={12} height={12} className="shrink-0 text-[var(--text-tertiary)]" />
-                  <span className="text-[12px] font-mono truncate">{b.name}</span>
-                  {b.protected && (
-                    <span title="Protected"><Icon icon="lucide:shield" width={10} height={10} className="shrink-0 text-[var(--text-tertiary)]" /></span>
-                  )}
-                  {b.name === repo.branch && (
-                    <Icon icon="lucide:check" width={12} height={12} className="shrink-0 ml-auto text-[var(--brand)]" />
-                  )}
-                </button>
-              ))
-            )}
+          <div className="absolute left-0 top-full mt-1 w-56 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] shadow-xl z-50 overflow-hidden">
+            <div className="px-2 py-1.5 border-b border-[var(--border)]">
+              <input
+                type="text"
+                value={branchSearch}
+                onChange={e => setBranchSearch(e.target.value)}
+                placeholder="Filter branches…"
+                className="w-full px-2 py-1 rounded bg-[var(--bg)] border border-[var(--border)] text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[var(--brand)] font-mono"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-[300px] overflow-y-auto py-1">
+              {branchLoading ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-[11px] text-[var(--text-secondary)]">
+                  <Icon icon="lucide:loader-2" width={12} height={12} className="animate-spin" />
+                  Loading branches…
+                </div>
+              ) : filteredBranches.length === 0 ? (
+                <div className="px-3 py-2 text-[11px] text-[var(--text-tertiary)]">
+                  {branches.length === 0 ? 'No branches found' : 'No matching branches'}
+                </div>
+              ) : (
+                filteredBranches.map(b => (
+                  <button
+                    key={b.name}
+                    onClick={() => switchBranch(b.name)}
+                    className={`flex items-center gap-2 w-full px-3 py-1.5 text-left transition-colors cursor-pointer ${
+                      b.name === repo.branch
+                        ? 'bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] text-[var(--text-primary)]'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <Icon icon="lucide:git-branch" width={12} height={12} className="shrink-0 text-[var(--text-tertiary)]" />
+                    <span className="text-[12px] font-mono truncate">{b.name}</span>
+                    {b.protected && (
+                      <span title="Protected"><Icon icon="lucide:shield" width={10} height={10} className="shrink-0 text-[var(--text-tertiary)]" /></span>
+                    )}
+                    {b.name === repo.branch && (
+                      <Icon icon="lucide:check" width={12} height={12} className="shrink-0 ml-auto text-[var(--brand)]" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         )}
       </div>

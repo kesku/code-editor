@@ -46,6 +46,18 @@ export function CodeEditor() {
   const [markdownModes, setMarkdownModes] = useState<Record<string, MarkdownViewMode>>({})
   const [vimCheatsheetOpen, setVimCheatsheetOpen] = useState(false)
 
+  const getEditor = useCallback(() => {
+    const editor = editorRef.current
+    if (!editor) return null
+    try {
+      editor.getModel()
+      return editor
+    } catch {
+      editorRef.current = null
+      return null
+    }
+  }, [])
+
   useEffect(() => {
     let mounted = true
 
@@ -104,6 +116,12 @@ export function CodeEditor() {
   const handleMount: OnMount = useCallback((editor) => {
     editorRef.current = editor
     editor.focus()
+
+    editor.onDidDispose(() => {
+      if (editorRef.current === editor) {
+        editorRef.current = null
+      }
+    })
   }, [])
 
   // Register AI inline completions
@@ -151,7 +169,7 @@ export function CodeEditor() {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        const editor = editorRef.current
+        const editor = getEditor()
         if (!editor) return
 
         const selection = editor.getSelection()
@@ -177,7 +195,7 @@ export function CodeEditor() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [getEditor])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -194,7 +212,7 @@ export function CodeEditor() {
 
   // Vim mode activation
   useEffect(() => {
-    const editor = editorRef.current
+    const editor = getEditor()
     if (!editor || !monacoReady) return
 
     // Cleanup previous vim instance
@@ -219,7 +237,7 @@ export function CodeEditor() {
         vimModeRef.current = null
       }
     }
-  }, [vimEnabled, monacoReady, activeFile])
+  }, [vimEnabled, monacoReady, activeFile, getEditor])
 
   // Persist vim mode preference
   useEffect(() => {
@@ -234,7 +252,7 @@ export function CodeEditor() {
   // Command palette -> Monaco command bridge
   useEffect(() => {
     const runMonacoAction = async (actionIds: string[]) => {
-      const editor = editorRef.current
+      const editor = getEditor()
       if (!editor) return
       for (const actionId of actionIds) {
         const action = editor.getAction(actionId)
@@ -251,7 +269,7 @@ export function CodeEditor() {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ commandId: string }>).detail
       if (!detail?.commandId) return
-      const editor = editorRef.current
+      const editor = getEditor()
       if (!editor) return
 
       switch (detail.commandId) {
@@ -281,7 +299,7 @@ export function CodeEditor() {
 
     window.addEventListener('editor-command', handler)
     return () => window.removeEventListener('editor-command', handler)
-  }, [])
+  }, [getEditor])
 
   const handleChange = useCallback((value: string | undefined) => {
     if (activeFile && value !== undefined) {
@@ -293,7 +311,7 @@ export function CodeEditor() {
   useEffect(() => {
     const handler = (e: Event) => {
       const { startLine, endLine } = (e as CustomEvent).detail
-      const editor = editorRef.current
+      const editor = getEditor()
       if (!editor) return
       editor.revealLineInCenter(startLine)
       editor.setSelection({
@@ -306,7 +324,7 @@ export function CodeEditor() {
     }
     window.addEventListener('editor-navigate', handler)
     return () => window.removeEventListener('editor-navigate', handler)
-  }, [])
+  }, [getEditor])
 
   const fileIcon = file?.kind === 'image'
     ? 'lucide:image'
