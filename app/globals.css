@@ -1222,6 +1222,36 @@ p { line-height: 1.6; }
 .inline-diff-glyph-modified::before { content: '~'; color: var(--warning, #eab308); font-weight: bold; }
 
 /* ──────────────────────────────────────────────────────────────────
+   Mobile Responsive
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Hide workspace sidebar on mobile */
+  .workspace-sidebar { display: none !important; }
+  /* Activity bar shrinks */
+  .activity-bar { width: 36px !important; }
+  .activity-bar .activity-icon { width: 28px !important; height: 28px !important; }
+  /* Explorer auto-collapses */
+  .file-explorer-panel { display: none !important; }
+  /* Agent panel takes full width when open */
+  .agent-panel-container { min-width: 0 !important; flex: 1 !important; }
+  /* Diff review panel full width overlay */
+  .diff-review-container { position: absolute !important; inset: 0 !important; z-index: 40 !important; width: 100% !important; }
+  /* Status bar smaller text */
+  .status-bar { font-size: 8px !important; }
+  /* Header tighter */
+  .main-header { height: 36px !important; padding-inline: 8px !important; }
+  /* Chat home input narrower */
+  .chat-home-container { padding-inline: 16px !important; }
+}
+
+@media (max-width: 480px) {
+  /* Ultra-narrow: hide activity bar too */
+  .activity-bar { display: none !important; }
+  /* Full bleed agent panel */
+  .agent-panel-container { width: 100% !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
    Scrollbar
    ────────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {

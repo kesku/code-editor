@@ -118,6 +118,17 @@ export function DiffReviewPanel({ visible, onClose, onAcceptAll, onRejectAll, on
   const pendingCount = changes.filter(c => c.status === 'pending').length
 
   const activeChange = changes.find(c => c.path === activeFile)
+  
+  // Auto-scroll to first change on file switch
+  useEffect(() => {
+    if (!activeChange) return
+    const timer = setTimeout(() => {
+      const firstChanged = document.querySelector('.diff-line-new')
+      firstChanged?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [activeFile, activeChange])
+
   const diffLines = useMemo(() => {
     if (!activeChange) return []
     return computeDiff(activeChange.original, activeChange.proposed)

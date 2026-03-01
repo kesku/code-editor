@@ -664,6 +664,12 @@ export function AgentPanel() {
       appendMessage({ id: crypto.randomUUID(), role: 'system', content: 'Committing...', timestamp: Date.now() })
       return
     }
+    if (text === '/changes') {
+      appendMessage({ id: crypto.randomUUID(), role: 'user', content: text, timestamp: Date.now() })
+      window.dispatchEvent(new CustomEvent('open-changes-panel'))
+      appendMessage({ id: crypto.randomUUID(), role: 'system', content: 'Opening pre-commit review...', timestamp: Date.now() })
+      return
+    }
     if (text === '/diff') {
       appendMessage({ id: crypto.randomUUID(), role: 'user', content: text, timestamp: Date.now() })
       const changes = diffEngine.getChanges()
@@ -894,6 +900,7 @@ export function AgentPanel() {
       { cmd: '/search', desc: 'Search across repo', icon: 'lucide:search' },
       { cmd: '/commit', desc: 'Commit changes', icon: 'lucide:git-commit-horizontal' },
       { cmd: '/diff', desc: 'Show changes', icon: 'lucide:git-compare' },
+      { cmd: '/changes', desc: 'Pre-commit review', icon: 'lucide:eye' },
     ]
     const term = input.toLowerCase()
     return cmds.filter(c => c.cmd.startsWith(term))

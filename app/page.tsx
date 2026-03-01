@@ -18,6 +18,7 @@ import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { ModeSelector } from '@/components/mode-selector'
 import type { AgentMode } from '@/components/mode-selector'
 const DiffReviewPanel = dynamic(() => import('@/components/diff-review-panel').then(m => m.DiffReviewPanel), { ssr: false })
+import { DetailsPanel } from '@/components/details-panel'
 import { ChangeSummaryBar } from '@/components/change-summary-bar'
 import { diffEngine } from '@/lib/streaming-diff'
 import { ResizeHandle } from '@/components/resize-handle'
@@ -104,7 +105,10 @@ function EditorLayout() {
   const local = useLocal()
   const [explorerWidth, setExplorerWidth] = useState(240)
   const [agentWidth, setAgentWidth] = useState(440)
-  const [agentOpen, setAgentOpen] = useState(true)
+  const [agentOpen, setAgentOpen] = useState(() => {
+    if (typeof window !== 'undefined') return window.innerWidth >= 768
+    return true
+  })
   const [explorerVisible, setExplorerVisible] = useState(true)
   const [quickOpenVisible, setQuickOpenVisible] = useState(false)
   const [shortcutsVisible, setShortcutsVisible] = useState(false)
@@ -116,8 +120,12 @@ function EditorLayout() {
   const [terminalHeight, setTerminalHeight] = useState(260)
   const [engineVisible, setEngineVisible] = useState(false)
   const [gatewayPopoverOpen, setGatewayPopoverOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') return window.innerWidth < 768
+    return false
+  })
   const [diffReviewVisible, setDiffReviewVisible] = useState(false)
+  const [detailsVisible, setDetailsVisible] = useState(true)
   const [diffReviewWidth, setDiffReviewWidth] = useState(480)
   const [agentMode, setAgentMode] = useState<AgentMode>('agent')
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
@@ -526,6 +534,16 @@ function EditorLayout() {
             </div>
           </>
         )}
+        {/* Details Panel (1Code-style right side) */}
+        {detailsVisible && !diffReviewVisible && (
+          <>
+            <ResizeHandle direction="horizontal" onResize={(delta) => setDiffReviewWidth(w => Math.max(200, Math.min(400, w - delta)))} />
+            <div className="shrink-0 overflow-hidden border-l border-[var(--border)]" style={{ width: Math.min(diffReviewWidth, 280) }}>
+              <DetailsPanel />
+            </div>
+          </>
+        )}
+
         {/* Diff Review Panel (1Code-style) */}
         {diffReviewVisible && (
           <>
