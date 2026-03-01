@@ -18,6 +18,7 @@ import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { ModeSelector } from '@/components/mode-selector'
 import type { AgentMode } from '@/components/mode-selector'
 const DiffReviewPanel = dynamic(() => import('@/components/diff-review-panel').then(m => m.DiffReviewPanel), { ssr: false })
+import { ChangeSummaryBar } from '@/components/change-summary-bar'
 import { ResizeHandle } from '@/components/resize-handle'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 const QuickOpen = dynamic(() => import('@/components/quick-open').then(m => m.QuickOpen), { ssr: false })
@@ -99,8 +100,8 @@ function EditorLayout() {
   const { status } = useGateway()
   const local = useLocal()
   const [explorerWidth, setExplorerWidth] = useState(240)
-  const [agentWidth, setAgentWidth] = useState(360)
-  const [agentOpen, setAgentOpen] = useState(false)
+  const [agentWidth, setAgentWidth] = useState(440)
+  const [agentOpen, setAgentOpen] = useState(true)
   const [explorerVisible, setExplorerVisible] = useState(true)
   const [quickOpenVisible, setQuickOpenVisible] = useState(false)
   const [shortcutsVisible, setShortcutsVisible] = useState(false)
@@ -589,6 +590,9 @@ function EditorLayout() {
 
 
 
+
+      {/* Change Summary Bar — slides up when agent makes edits */}
+      <ChangeSummaryBar onReview={() => setDiffReviewVisible(true)} />
 
       {/* Status bar */}
       <footer className="flex items-center justify-between px-3 h-6 border-t border-[var(--border)] bg-[var(--bg-elevated)] text-[9px] text-[var(--text-tertiary)] shrink-0">

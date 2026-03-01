@@ -12,6 +12,9 @@ import { MarkdownPreview } from '@/components/markdown-preview'
 import { DiffViewer } from '@/components/diff-viewer'
 import { parseEditProposals, type EditProposal } from '@/lib/edit-parser'
 import { showInlineDiff, type InlineDiffResult } from '@/lib/inline-diff'
+import { diffEngine } from '@/lib/streaming-diff'
+import { PlanView } from '@/components/plan-view'
+import type { PlanStep } from '@/components/plan-view'
 import { navigateToLine } from '@/lib/line-links'
 import {
   CODE_EDITOR_SESSION_KEY,
@@ -150,6 +153,7 @@ export function AgentPanel() {
   const [modelInfo, setModelInfo] = useState<{ current: string; available: string[] }>({ current: '', available: [] })
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [agentMode, setAgentMode] = useState<AgentMode>('agent')
+  const [planSteps, setPlanSteps] = useState<PlanStep[]>([])
   const [contextTokens, setContextTokens] = useState(0)
   const inlineDiffRef = useRef<InlineDiffResult | null>(null)
   const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(-1)
@@ -349,8 +353,16 @@ export function AgentPanel() {
           const text = finalText || prev || ''
           if (text && !/^NO_REPLY$/i.test(text.trim())) {
             const editProposals = parseEditProposals(text)
-            // Show inline diff preview in editor (Cursor-style)
+            // Feed edit proposals to streaming diff engine
             if (editProposals.length > 0) {
+              for (const proposal of editProposals) {
+                const existing = getFile(proposal.filePath)
+                diffEngine.registerOriginal(proposal.filePath, existing?.content ?? '')
+                diffEngine.updateProposed(proposal.filePath, proposal.content)
+                diffEngine.finalize(proposal.filePath)
+              }
+              diffEngine.finalizeAll()
+              // Also show inline diff in editor for the first file
               window.dispatchEvent(new CustomEvent('show-inline-diff', {
                 detail: { proposals: editProposals }
               }))
@@ -546,6 +558,39 @@ export function AgentPanel() {
 
 
   // ─── Message helpers ──────────────────────────────────────────
+  // Parse plan steps from agent text
+  const parsePlanSteps = useCallback((text: string): PlanStep[] => {
+    const steps: PlanStep[] = []
+    // Match numbered lists: 1. **Title** — description
+    const matches = text.matchAll(/^(\d+)\.\s+\*{0,2}([^*]+?)\*{0,2}\s*$/gm)
+    for (const m of matches) {
+      steps.push({
+        id: `step-${m[1]}`,
+        title: m[2].trim(),
+        description: undefined,
+        status: 'pending',
+      })
+    }
+    return steps
+  }, [])
+
+  // Emit session update to workspace sidebar
+  const emitSessionUpdate = useCallback((msg: ChatMessage) => {
+    const summary = diffEngine.getSummary()
+    window.dispatchEvent(new CustomEvent('chat-session-update', {
+      detail: {
+        id: 'current',
+        title: msg.content.slice(0, 40).replace(/\n/g, ' ') || 'New Chat',
+        preview: msg.content.slice(0, 80),
+        timestamp: Date.now(),
+        fileCount: summary.fileCount || undefined,
+        additions: summary.additions || undefined,
+        deletions: summary.deletions || undefined,
+        mode: agentMode,
+      }
+    }))
+  }, [agentMode])
+
   const appendMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => [...prev, msg])
   }, [])
@@ -932,6 +977,21 @@ export function AgentPanel() {
                   }}
                 >
                   <MarkdownPreview content={msg.content} />
+                  {/* Render plan view if message contains numbered steps */}
+                  {msg.role === 'assistant' && parsePlanSteps(msg.content).length >= 3 && (
+                    <PlanView
+                      steps={parsePlanSteps(msg.content)}
+                      interactive={agentMode === 'plan'}
+                      onApprove={() => {
+                        setInput('Continue with the plan')
+                        sendMessage()
+                      }}
+                      onSkip={() => {
+                        setInput('Skip to coding')
+                        sendMessage()
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -987,32 +1047,41 @@ export function AgentPanel() {
               <div className="flex flex-col gap-1 px-3 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)] rounded-bl-sm max-w-[90%]">
                 {/* Thinking trail */}
                 {thinkingTrail.length > 0 && (
-                  <div className="flex flex-col gap-0.5 mb-1">
-                    {thinkingTrail.map((step, i) => (
-                      <div key={i} className={`flex items-center gap-1.5 text-[10px] transition-opacity duration-300 ${
-                        i === thinkingTrail.length - 1 ? 'text-[var(--text-secondary)]' : 'text-[var(--text-disabled)]'
-                      }`}>
-                        <Icon icon={
-                          step.startsWith('Reading') ? 'lucide:file-text' :
-                          step.startsWith('Searching') ? 'lucide:search' :
-                          step.startsWith('Exploring') ? 'lucide:folder-open' :
-                          step.startsWith('Editing') ? 'lucide:pencil' :
-                          step.startsWith('Running') ? 'lucide:terminal' :
-                          'lucide:sparkles'
-                        } width={10} height={10} className="shrink-0" />
-                        <span className="truncate">{step}</span>
-                        {i === thinkingTrail.length - 1 && <span className="w-1 h-1 rounded-full bg-[var(--brand)] animate-pulse shrink-0" />}
-                      </div>
-                    ))}
+                  <div className="flex flex-col gap-0.5 mb-1.5 pl-1 border-l-2 border-[color-mix(in_srgb,var(--brand)_30%,transparent)]">
+                    {thinkingTrail.map((step, i) => {
+                      const isLast = i === thinkingTrail.length - 1
+                      const icon = step.startsWith('Reading') ? 'lucide:file-text' :
+                        step.startsWith('Searching') ? 'lucide:search' :
+                        step.startsWith('Exploring') ? 'lucide:folder-open' :
+                        step.startsWith('Editing') || step.startsWith('Writing') ? 'lucide:pencil' :
+                        step.startsWith('Running') || step.startsWith('Executing') ? 'lucide:terminal' :
+                        step.startsWith('Creating') ? 'lucide:plus' :
+                        step.startsWith('Analyzing') ? 'lucide:scan' :
+                        'lucide:sparkles'
+                      return (
+                        <div key={i} className={`flex items-center gap-1.5 text-[10px] pl-2 transition-all duration-300 plan-step-enter ${
+                          isLast ? 'text-[var(--text-secondary)]' : 'text-[var(--text-disabled)] opacity-60'
+                        }`}>
+                          <Icon icon={icon} width={10} height={10} className={`shrink-0 ${isLast ? 'text-[var(--brand)]' : ''}`} />
+                          <span className="truncate flex-1">{step}</span>
+                          {isLast && (
+                            <span className="relative flex h-1.5 w-1.5 shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand)] opacity-75" />
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--brand)]" />
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-typing-dot" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-typing-dot-2" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-typing-dot-3" />
+                <div className="flex items-center gap-2">
+                  <div className="typing-dots">
+                    <span /><span /><span />
                   </div>
-                <span className="text-[10px] text-[var(--text-tertiary)] ml-1">Thinking...</span>
+                  <span className="text-[10px] text-[var(--text-tertiary)]">
+                    {thinkingTrail.length > 0 ? thinkingTrail[thinkingTrail.length - 1] : 'Thinking...'}
+                  </span>
                 </div>
               </div>
             )}

@@ -9,7 +9,7 @@ export interface FileChange {
   proposed: string
   additions: number
   deletions: number
-  status: 'pending' | 'accepted' | 'rejected'
+  status: 'streaming' | 'pending' | 'accepted' | 'rejected'
 }
 
 interface DiffLine {
@@ -186,6 +186,12 @@ export function DiffReviewPanel({ visible, onClose, onAcceptAll, onRejectAll, on
             <span className="text-[8px] text-[var(--text-disabled)]">{c.path.includes('/') ? c.path.split('/').slice(0, -1).join('/') : ''}</span>
             <span className="text-[9px] font-mono text-[var(--color-additions)]">+{c.additions}</span>
             {c.deletions > 0 && <span className="text-[9px] font-mono text-[var(--color-deletions)]">-{c.deletions}</span>}
+            {c.status === 'streaming' && (
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand)] opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--brand)]" />
+              </span>
+            )}
             {c.status === 'accepted' && <Icon icon="lucide:check" width={9} height={9} className="text-[var(--color-additions)]" />}
             {c.status === 'rejected' && <Icon icon="lucide:x" width={9} height={9} className="text-[var(--color-deletions)]" />}
           </button>
@@ -223,13 +229,13 @@ export function DiffReviewPanel({ visible, onClose, onAcceptAll, onRejectAll, on
               {diffLines.map((line, idx) => (
                 <tr
                   key={idx}
-                  className={
+                  className={`transition-colors duration-300 ${
                     line.type === 'added'
-                      ? 'bg-[color-mix(in_srgb,var(--color-additions)_8%,transparent)]'
+                      ? 'bg-[color-mix(in_srgb,var(--color-additions)_8%,transparent)] diff-line-new'
                       : line.type === 'removed'
                       ? 'bg-[color-mix(in_srgb,var(--color-deletions)_8%,transparent)]'
                       : ''
-                  }
+                  }`}
                 >
                   {/* Old line number */}
                   <td className="w-[42px] text-right pr-1.5 pl-2 select-none text-[10px] text-[var(--text-disabled)] border-r border-[var(--border)]">

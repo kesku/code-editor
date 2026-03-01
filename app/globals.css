@@ -1128,6 +1128,79 @@ p { line-height: 1.6; }
 }
 
 /* ──────────────────────────────────────────────────────────────────
+   Streaming & Animation
+   ────────────────────────────────────────────────────────────────── */
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeInLine {
+  from { background-color: color-mix(in srgb, var(--color-additions) 25%, transparent); }
+  to { background-color: color-mix(in srgb, var(--color-additions) 8%, transparent); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 30%, transparent); }
+  50% { box-shadow: 0 0 12px 2px color-mix(in srgb, var(--brand) 15%, transparent); }
+}
+
+.animate-breathe { animation: breathe 2s ease-in-out infinite; }
+.animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+.animate-line-flash { animation: fadeInLine 0.8s ease-out forwards; }
+.animate-glow { animation: pulseGlow 2s ease-in-out infinite; }
+
+/* Typing indicator dots */
+.typing-dots { display: inline-flex; gap: 3px; align-items: center; }
+.typing-dots span {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--brand);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.16s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Streaming dot pulse */
+.streaming-dots::after {
+  content: '';
+  animation: streamDots 1.5s infinite;
+}
+@keyframes streamDots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+/* Plan step transition */
+.plan-step-enter {
+  animation: slideIn 0.3s ease-out forwards;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Diff line highlight flash */
+.diff-line-new {
+  animation: fadeInLine 0.6s ease-out forwards;
+}
+
+/* Summary bar slide */
+.summary-bar-enter {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+/* ──────────────────────────────────────────────────────────────────
    Inline Diff Decorations (Cursor-style)
    ────────────────────────────────────────────────────────────────── */
 .inline-diff-added {
