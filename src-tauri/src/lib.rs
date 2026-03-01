@@ -190,6 +190,7 @@ pub fn run() {
             // Local filesystem commands
             local_fs::local_read_tree,
             local_fs::local_read_file,
+            local_fs::local_read_file_base64,
             local_fs::local_write_file,
             local_fs::local_git_info,
             local_fs::local_git_diff,

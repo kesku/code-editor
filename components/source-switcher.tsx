@@ -145,24 +145,18 @@ export function SourceSwitcher() {
 
       {/* Context-dependent selector */}
       {local.localMode ? (
-        <div className="relative">
-          <button
-            onClick={() => setDropdownOpen(v => !v)}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
-          >
-            <Icon icon="lucide:folder-open" width={13} height={13} className="text-[var(--brand)]" />
-            <span className="text-[var(--text-primary)] font-medium max-w-[140px] truncate">
-              {folderName || 'Open Folder'}
-            </span>
-            {local.gitInfo?.is_repo && (
-              <BranchDropdown
-                current={local.gitInfo.branch}
-                branches={local.branches}
-                onSwitch={local.switchBranch}
-              />
-            )}
-            <Icon icon="lucide:chevron-down" width={11} height={11} className="text-[var(--text-tertiary)]" />
-          </button>
+        <div className="flex items-center gap-1">
+          <div className="relative">
+            <button
+              onClick={() => setDropdownOpen(v => !v)}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+            >
+              <Icon icon="lucide:folder-open" width={13} height={13} className="text-[var(--brand)]" />
+              <span className="text-[var(--text-primary)] font-medium max-w-[140px] truncate">
+                {folderName || 'Open Folder'}
+              </span>
+              <Icon icon="lucide:chevron-down" width={11} height={11} className="text-[var(--text-tertiary)]" />
+            </button>
 
           {dropdownOpen && (
             <div className="absolute left-0 top-[calc(100%+4px)] z-[91] w-[280px] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl overflow-hidden">
@@ -212,6 +206,15 @@ export function SourceSwitcher() {
                 </>
               )}
             </div>
+          )}
+          </div>
+
+          {local.gitInfo?.is_repo && (
+            <BranchDropdown
+              current={local.gitInfo.branch}
+              branches={local.branches}
+              onSwitch={local.switchBranch}
+            />
           )}
         </div>
       ) : (

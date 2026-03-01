@@ -204,6 +204,13 @@ function EditorLayout() {
     const handler = async (e: Event) => {
       const { path } = (e as CustomEvent).detail
       try {
+        const media = getMediaMeta(path)
+        if (media) {
+          const base64 = await local.readFileBase64(path)
+          const content = base64 ? toDataUrl(base64, media.mimeType) : ''
+          openFile(path, content, undefined, media)
+          return
+        }
         const content = await local.readFile(path)
         openFile(path, content, undefined, { kind: 'text' })
       } catch (err) {
@@ -212,7 +219,7 @@ function EditorLayout() {
     }
     window.addEventListener('file-select', handler)
     return () => window.removeEventListener('file-select', handler)
-  }, [local.localMode, local.readFile, openFile])
+  }, [local.localMode, local.readFile, local.readFileBase64, openFile])
 
   // Handle local save-file events
   useEffect(() => {

@@ -36,8 +36,10 @@ interface LocalContextValue {
   setRootPath: (path: string) => void
   /** Exit local mode */
   exitLocalMode: () => void
-  /** Read a local file */
+  /** Read a local file as text */
   readFile: (path: string) => Promise<string>
+  /** Read a local file as base64 */
+  readFileBase64: (path: string) => Promise<string>
   /** Write a local file */
   writeFile: (path: string, content: string) => Promise<void>
   /** Refresh tree + git status */
@@ -227,6 +229,24 @@ export function LocalProvider({ children }: { children: ReactNode }) {
     return await file.text()
   }, [desktop, rootPath])
 
+  const readFileBase64 = useCallback(async (path: string): Promise<string> => {
+    if (desktop) {
+      if (!rootPath) throw new Error('No root path')
+      const content = await tauriInvoke<string>('local_read_file_base64', { root: rootPath, path })
+      return content ?? ''
+    }
+
+    const handle = webDirHandleRef.current
+    if (!handle) throw new Error('No folder open')
+    const fileHandle = await webResolveFile(handle, path)
+    const file = await fileHandle.getFile()
+    const buf = await file.arrayBuffer()
+    const bytes = new Uint8Array(buf)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    return btoa(binary)
+  }, [desktop, rootPath])
+
   const writeFile = useCallback(async (path: string, content: string) => {
     if (desktop) {
       if (!rootPath) throw new Error('No root path')
@@ -278,7 +298,7 @@ export function LocalProvider({ children }: { children: ReactNode }) {
       available: true,
       isWebFS: !desktop && localMode,
       openFolder, setRootPath, exitLocalMode,
-      readFile, writeFile, refresh, commitFiles, getDiff, switchBranch,
+      readFile, readFileBase64, writeFile, refresh, commitFiles, getDiff, switchBranch,
     }}>
       {children}
     </LocalContext.Provider>

@@ -105,6 +105,15 @@ pub fn local_read_file(root: String, path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn local_read_file_base64(root: String, path: String) -> Result<String, String> {
+    use base64::Engine as _;
+    let full = PathBuf::from(&root).join(&path);
+    let bytes = fs::read(&full)
+        .map_err(|e| format!("Failed to read {}: {}", path, e))?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
+}
+
+#[tauri::command]
 pub fn local_write_file(root: String, path: String, content: String) -> Result<(), String> {
     let full = PathBuf::from(&root).join(&path);
     // Create parent dirs if needed
