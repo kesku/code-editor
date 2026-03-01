@@ -627,8 +627,17 @@ export function AgentPanel() {
   }, [chatId, messages])
 
   const appendMessage = useCallback((msg: ChatMessage) => {
-    setMessages(prev => [...prev, msg])
-  }, [])
+    setMessages(prev => {
+      const next = [...prev, msg]
+      // Auto-title from first user message
+      if (msg.role === 'user' && next.filter(m => m.role === 'user').length === 1) {
+        window.dispatchEvent(new CustomEvent('chat-session-update', {
+          detail: { id: chatId, title: msg.content.slice(0, 40), preview: msg.content.slice(0, 80), timestamp: Date.now() }
+        }))
+      }
+      return next
+    })
+  }, [chatId])
 
   // ─── Commit result listener ──────────────────────────────────
   useEffect(() => {
@@ -968,7 +977,7 @@ export function AgentPanel() {
   const chatTitle = messages.find(m => m.role === 'user')?.content.slice(0, 50).replace(/\n/g, ' ') || null
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[var(--sidebar-bg)]">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-[var(--sidebar-bg)]">
       {/* Header */}
       <ChatHeader title={chatTitle ?? undefined} messageCount={messages.length} />
       {messages.length > 0 && (
@@ -987,24 +996,37 @@ export function AgentPanel() {
         </div>
       )}
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
-        {messages.length === 0 && !isConnected && (
+      {/* Empty states — full bleed */}
+      {messages.length === 0 && !isConnected && (
+        <div className="flex-1 overflow-y-auto px-3 py-3">
           <AgentConnectPrompt />
-        )}
-
-        {messages.length === 0 && isConnected && (
-          <ChatHome
+        </div>
+      )}
+      {messages.length === 0 && isConnected && (
+        <ChatHome
             onSend={(text, mode) => {
               setAgentMode(mode)
               setInput(text)
+              // Emit session to sidebar immediately
+              window.dispatchEvent(new CustomEvent('chat-session-update', {
+                detail: {
+                  id: chatId,
+                  title: text.slice(0, 40),
+                  preview: text.slice(0, 80),
+                  timestamp: Date.now(),
+                  mode,
+                }
+              }))
               setTimeout(() => { sendMessage() }, 50)
             }}
             onSelectFolder={() => window.dispatchEvent(new CustomEvent('open-folder'))}
             onCloneRepo={() => window.dispatchEvent(new CustomEvent('open-folder'))}
           />
-        )}
+      )}
 
+      {/* Messages */}
+      {messages.length > 0 && (
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
         {messages.map(msg => (
           <div key={msg.id} className={`group/msg flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-fade-in-up`} style={{ animationDuration: '0.2s' }}>
             <div className={`max-w-[90%] min-w-0 rounded-xl px-3 py-2 text-[12px] leading-relaxed ${
@@ -1148,7 +1170,10 @@ export function AgentPanel() {
           </div>
         )}
       </div>
+      )}
 
+      {/* Input section — hidden when ChatHome is showing */}
+      {(messages.length > 0 || !isConnected) && <>
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="px-3 pb-1 shrink-0">
@@ -1375,6 +1400,7 @@ export function AgentPanel() {
           </div>
         </div>
       </div>
+      </>}
     </div>
   )
 }
