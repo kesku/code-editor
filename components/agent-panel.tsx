@@ -12,6 +12,7 @@ import { navigateToLine } from '@/lib/line-links'
 import {
   CODE_EDITOR_SESSION_KEY,
   SESSION_INIT_STORAGE_KEY,
+  CODE_EDITOR_SYSTEM_PROMPT_VERSION,
   CODE_EDITOR_SYSTEM_PROMPT,
   buildEditorContext,
 } from '@/lib/agent-session'
@@ -51,7 +52,7 @@ export function AgentPanel() {
   useEffect(() => {
     if (!isConnected || sessionInitRef.current) return
 
-    const initKey = `${SESSION_INIT_STORAGE_KEY}:${CODE_EDITOR_SESSION_KEY}`
+    const initKey = `${SESSION_INIT_STORAGE_KEY}:${CODE_EDITOR_SESSION_KEY}:v${CODE_EDITOR_SYSTEM_PROMPT_VERSION}`
     const alreadyInit = typeof window !== 'undefined' && sessionStorage.getItem(initKey)
     if (alreadyInit) {
       sessionInitRef.current = true
