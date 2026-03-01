@@ -81,7 +81,7 @@ function toDataUrl(base64: string, mimeType: string): string {
 type AccessStatus =
   | { state: 'loading' }
   | { state: 'ok' }
-  | { state: 'error'; message: string }
+  | { state: 'error'; message: string; sponsorUrl?: string }
 
 function SponsorGate({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -100,10 +100,11 @@ function SponsorGate({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           setAccess({ state: 'ok' })
         } else {
-          const data = await res.json() as { message?: string }
+          const data = await res.json() as { message?: string; sponsor_url?: string }
           setAccess({
             state: 'error',
             message: data.message ?? 'Access verification failed.',
+            sponsorUrl: data.sponsor_url,
           })
         }
       } catch {
@@ -161,11 +162,27 @@ function SponsorGate({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="space-y-3">
+              {access.state === 'error' && access.sponsorUrl && (
+                <a
+                  href={access.sponsorUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2 text-white"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 70%, #000) 100%)',
+                    boxShadow: '0 2px 12px var(--brand-glow, rgba(167,139,250,0.15))',
+                  }}
+                >
+                  <Icon icon="lucide:heart" width={14} height={14} />
+                  Become a Sponsor
+                </a>
+              )}
+
               <button
                 onClick={() => setRetryCount(c => c + 1)}
                 className="w-full py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer border border-[var(--border)] bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
               >
-                Retry
+                Retry Verification
               </button>
 
               <button

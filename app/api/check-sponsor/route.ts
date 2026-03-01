@@ -116,8 +116,8 @@ export async function GET() {
   return NextResponse.json(
     {
       error: 'not_pro',
-      message: 'Your account does not have KnotCode Pro access.',
-      sponsor_url: SPONSOR_LOGIN ? `https://github.com/sponsors/${SPONSOR_LOGIN}` : undefined,
+      message: 'Knot Code requires a GitHub Sponsors subscription at $25/month or higher.',
+      sponsor_url: SPONSOR_LOGIN ? `https://github.com/sponsors/${SPONSOR_LOGIN}` : 'https://github.com/sponsors/openknots',
     },
     { status: 403 },
   )
