@@ -11,6 +11,7 @@ import { CodeEditor } from '@/components/code-editor'
 import { AgentPanel } from '@/components/agent-panel'
 import { RepoSelector } from '@/components/repo-selector'
 import { ResizeHandle } from '@/components/resize-handle'
+import { ThemeSwitcher } from '@/components/theme-switcher'
 
 const STORAGE_REMEMBER = 'code-editor:remember'
 
@@ -200,7 +201,7 @@ function EditorLayout() {
   const { status } = useGateway()
   const [explorerWidth, setExplorerWidth] = useState(240)
   const [agentWidth, setAgentWidth] = useState(360)
-  const [agentVisible, setAgentVisible] = useState(true)
+  const [agentOpen, setAgentOpen] = useState(false)
   const [explorerVisible, setExplorerVisible] = useState(true)
 
   const dirtyCount = files.filter(f => f.dirty).length
@@ -215,7 +216,7 @@ function EditorLayout() {
         if (!res.ok) throw new Error('Failed to fetch file')
         const data = await res.json()
         const content = data.content
-          ? atob(data.content.replace(/\n/g, ''))
+          ? atob(data.content.replace(/\\n/g, ''))
           : data.text ?? ''
         openFile(path, content, data.sha ?? sha)
       } catch (err) {
@@ -231,16 +232,15 @@ function EditorLayout() {
   }, [])
 
   const handleAgentResize = useCallback((delta: number) => {
-    // Negative delta = dragging left = wider agent
     setAgentWidth(w => Math.min(AGENT_MAX, Math.max(AGENT_MIN, w - delta)))
   }, [])
 
-  // Keyboard shortcut: Cmd+B toggle explorer, Cmd+J toggle agent
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
         if (e.key === 'b') { e.preventDefault(); setExplorerVisible(v => !v) }
-        if (e.key === 'j') { e.preventDefault(); setAgentVisible(v => !v) }
+        if (e.key === 'j') { e.preventDefault(); setAgentOpen(v => !v) }
       }
     }
     window.addEventListener('keydown', handler)
@@ -248,7 +248,7 @@ function EditorLayout() {
   }, [])
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-dvh max-h-dvh overflow-hidden">
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 h-11 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0">
         <div className="flex items-center gap-3">
@@ -259,7 +259,7 @@ function EditorLayout() {
                 ? 'text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
             }`}
-            title={`${explorerVisible ? 'Hide' : 'Show'} explorer (⌘B)`}
+            title={`${explorerVisible ? 'Hide' : 'Show'} explorer (\u2318B)`}
           >
             <Icon icon="lucide:panel-left" width={16} height={16} />
           </button>
@@ -272,8 +272,8 @@ function EditorLayout() {
           <RepoSelector />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className={`flex items-center gap-1 text-[10px] ${
+        <div className="flex items-center gap-1.5">
+          <span className={`flex items-center gap-1 text-[10px] mr-1 ${
             status === 'connected' ? 'text-[var(--color-additions)]' : 'text-[var(--text-tertiary)]'
           }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${
@@ -282,14 +282,16 @@ function EditorLayout() {
             gateway
           </span>
 
+          <ThemeSwitcher />
+
           <button
-            onClick={() => setAgentVisible(!agentVisible)}
+            onClick={() => setAgentOpen(!agentOpen)}
             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-              agentVisible
+              agentOpen
                 ? 'text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,transparent)]'
                 : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
             }`}
-            title={`${agentVisible ? 'Hide' : 'Show'} agent (⌘J)`}
+            title={`${agentOpen ? 'Hide' : 'Show'} agent (\u2318J)`}
           >
             <Icon icon="lucide:sparkles" width={15} height={15} />
           </button>
@@ -297,11 +299,11 @@ function EditorLayout() {
       </header>
 
       {/* Main content */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* File Explorer */}
         {explorerVisible && (
           <>
-            <div className="shrink-0 bg-[var(--bg)]" style={{ width: explorerWidth }}>
+            <div className="shrink-0 bg-[var(--bg)] overflow-hidden" style={{ width: explorerWidth }}>
               <FileExplorer />
             </div>
             <ResizeHandle direction="horizontal" onResize={handleExplorerResize} />
@@ -309,21 +311,36 @@ function EditorLayout() {
         )}
 
         {/* Editor area */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <EditorTabs />
           <CodeEditor />
         </div>
 
-        {/* Agent Panel */}
-        {agentVisible && (
+        {/* Agent Side Panel (expanded from bubble) */}
+        {agentOpen && (
           <>
             <ResizeHandle direction="horizontal" onResize={handleAgentResize} />
-            <div className="shrink-0" style={{ width: agentWidth }}>
+            <div className="shrink-0 overflow-hidden" style={{ width: agentWidth }}>
               <AgentPanel />
             </div>
           </>
         )}
       </div>
+
+      {/* Chat bubble (visible when agent panel is closed) */}
+      {!agentOpen && (
+        <button
+          onClick={() => setAgentOpen(true)}
+          className="fixed bottom-6 right-6 w-12 h-12 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 cursor-pointer z-50"
+          style={{
+            backgroundColor: 'var(--brand)',
+            color: 'white',
+          }}
+          title="Open agent (\u2318J)"
+        >
+          <Icon icon="lucide:sparkles" width={20} height={20} />
+        </button>
+      )}
 
       {/* Status bar */}
       <footer className="flex items-center justify-between px-3 h-6 border-t border-[var(--border)] bg-[var(--bg-elevated)] text-[9px] text-[var(--text-tertiary)] shrink-0">
