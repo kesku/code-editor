@@ -17,12 +17,12 @@ interface Props {
 
 export function ModeSelector({ mode, onChange }: Props) {
   return (
-    <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)]">
+    <div className="flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--bg-subtle)] border border-[var(--border)]">
       {MODES.map(m => (
         <button
           key={m.id}
           onClick={() => onChange(m.id)}
-          className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all cursor-pointer ${
             mode === m.id
               ? 'bg-[var(--bg)] text-[var(--text-primary)] shadow-sm border border-[var(--border)]'
               : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] border border-transparent'
