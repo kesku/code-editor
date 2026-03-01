@@ -550,7 +550,16 @@ export function AgentPanel() {
     setInput('')
     setSending(true)
 
-    appendMessage({ id: crypto.randomUUID(), role: 'user', content: text, timestamp: Date.now() })
+    // Build visual label for attachments
+    const attachLabels: string[] = []
+    for (const att of contextAttachments) {
+      attachLabels.push(att.type === 'selection' ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}` : `📄 ${att.path.split('/').pop()}`)
+    }
+    for (const img of imageAttachments) {
+      attachLabels.push(`🖼 ${img.name}`)
+    }
+    const displayText = attachLabels.length > 0 ? `[${attachLabels.join(' · ')}]\n${text}` : text
+    appendMessage({ id: crypto.randomUUID(), role: 'user', content: displayText, timestamp: Date.now() })
 
     if (!isConnected) {
       appendMessage({
@@ -564,7 +573,23 @@ export function AgentPanel() {
 
     try {
       const context = buildContext()
-      const fullMessage = context ? `${context}\n\n${text}` : text
+      // Build attachment context
+      let attachCtx = ''
+      for (const att of contextAttachments) {
+        if (att.type === 'file') {
+          const ext = att.path.split('.').pop() ?? ''
+          attachCtx += `\n\n[Referenced file: ${att.path}]\n` + '```' + ext + '\n' + att.content.slice(0, 6000) + '\n```'
+        } else if (att.type === 'selection') {
+          const ext = att.path.split('.').pop() ?? ''
+          attachCtx += `\n\n[Selected code: ${att.path}:${att.startLine}-${att.endLine}]\n` + '```' + ext + '\n' + att.content + '\n```'
+        }
+      }
+      for (const img of imageAttachments) {
+        attachCtx += `\n\n[Attached screenshot: ${img.name}]`
+      }
+      const fullMessage = (context || '') + attachCtx + '\n\n' + text
+      setContextAttachments([])
+      setImageAttachments([])
       const idemKey = `ce-${Date.now()}`
       sentKeysRef.current.add(idemKey)
 
@@ -1039,40 +1064,55 @@ export function AgentPanel() {
           {(contextAttachments.length > 0 || imageAttachments.length > 0) && (
             <div className="flex flex-wrap gap-1 mb-1.5">
               {imageAttachments.map((img, i) => (
-                <span
+                <div
                   key={`img-${i}`}
-                  className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-secondary)]"
+                  className="relative group/chip rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] overflow-hidden"
+                  style={{ width: 72, height: 52 }}
                 >
-                  <Icon icon="lucide:image" width={9} height={9} />
-                  {img.name.length > 20 ? img.name.slice(0, 17) + '...' : img.name}
+                  <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 pb-0.5 pt-2">
+                    <span className="text-[7px] text-white/90 font-mono truncate block">{img.name.split('.')[0]}</span>
+                  </div>
                   <button
                     onClick={() => setImageAttachments(prev => prev.filter((_, j) => j !== i))}
-                    className="hover:text-[var(--text-primary)] cursor-pointer"
+                    className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/50 text-white/80 hover:bg-black/70 flex items-center justify-center opacity-0 group-hover/chip:opacity-100 transition-opacity cursor-pointer"
                   >
-                    <Icon icon="lucide:x" width={8} height={8} />
+                    <Icon icon="lucide:x" width={7} height={7} />
                   </button>
-                </span>
+                </div>
               ))}
               {contextAttachments.map((att, i) => (
-                <span
+                <div
                   key={i}
-                  className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-secondary)]"
+                  className="relative group/chip flex flex-col rounded-lg border border-[var(--border)] bg-[var(--bg-subtle)] overflow-hidden"
+                  style={{ width: att.type === 'selection' ? 180 : 140, maxHeight: 56 }}
                 >
-                  <Icon
-                    icon={att.type === 'selection' ? 'lucide:text-cursor-input' : 'lucide:file-text'}
-                    width={9} height={9}
-                  />
-                  {att.type === 'selection'
-                    ? `${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
-                    : att.path.split('/').pop()
-                  }
+                  {/* File/selection header */}
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[var(--bg-secondary)] border-b border-[var(--border)] shrink-0">
+                    <Icon
+                      icon={att.type === 'selection' ? 'lucide:text-cursor-input' : 'lucide:file-text'}
+                      width={8} height={8} className="text-[var(--text-tertiary)] shrink-0"
+                    />
+                    <span className="text-[8px] font-mono text-[var(--text-secondary)] truncate">
+                      {att.type === 'selection'
+                        ? `${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
+                        : att.path.split('/').pop()
+                      }
+                    </span>
+                  </div>
+                  {/* Content preview */}
+                  <div className="px-1.5 py-0.5 overflow-hidden flex-1">
+                    <pre className="text-[7px] leading-[1.3] font-mono text-[var(--text-disabled)] whitespace-pre overflow-hidden" style={{ maxHeight: 28 }}>
+                      {att.content.slice(0, 120)}
+                    </pre>
+                  </div>
                   <button
                     onClick={() => setContextAttachments(prev => prev.filter((_, j) => j !== i))}
-                    className="hover:text-[var(--text-primary)] cursor-pointer"
+                    className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] flex items-center justify-center opacity-0 group-hover/chip:opacity-100 transition-opacity cursor-pointer"
                   >
-                    <Icon icon="lucide:x" width={8} height={8} />
+                    <Icon icon="lucide:x" width={7} height={7} />
                   </button>
-                </span>
+                </div>
               ))}
             </div>
           )}
