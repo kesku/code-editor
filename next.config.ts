@@ -1,10 +1,10 @@
 import type { NextConfig } from 'next'
 
-const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined
+const isTauriStaticBuild = process.env.npm_lifecycle_event === 'build:static'
 
 const nextConfig: NextConfig = {
   // Static export for Tauri desktop builds
-  ...(isTauri ? { output: 'export' } : {}),
+  ...(isTauriStaticBuild ? { output: 'export' } : {}),
 }
 
 export default nextConfig
