@@ -32,6 +32,7 @@ export function AgentPanel() {
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(-1)
   const [sending, setSending] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [activeDiff, setActiveDiff] = useState<{
@@ -265,14 +266,6 @@ export function AgentPanel() {
     }
   }, [input, sending, isConnected, sendRequest, buildContext, appendMessage])
 
-  // ─── Keyboard ─────────────────────────────────────────────────
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }, [sendMessage])
-
   // ─── Handle ⌘K inline edit requests ────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
@@ -401,6 +394,39 @@ export function AgentPanel() {
     const term = input.toLowerCase()
     return cmds.filter(c => c.cmd.startsWith(term))
   }, [input])
+
+  // ─── Keyboard ─────────────────────────────────────────────────
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (suggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setActiveSuggestionIdx(i => (i + 1) % suggestions.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setActiveSuggestionIdx(i => (i <= 0 ? suggestions.length - 1 : i - 1))
+        return
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault()
+        const idx = activeSuggestionIdx >= 0 ? activeSuggestionIdx : 0
+        setInput(suggestions[idx].cmd + ' ')
+        setActiveSuggestionIdx(-1)
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setActiveSuggestionIdx(-1)
+        setInput('')
+        return
+      }
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }, [suggestions, activeSuggestionIdx, sendMessage])
 
   // ─── Clear chat ───────────────────────────────────────────────
   const [confirmClear, setConfirmClear] = useState(false)
@@ -569,11 +595,15 @@ export function AgentPanel() {
       {suggestions.length > 0 && (
         <div className="px-3 pb-1 shrink-0">
           <div className="flex flex-wrap gap-1">
-            {suggestions.map(s => (
+            {suggestions.map((s, i) => (
               <button
                 key={s.cmd}
-                onClick={() => setInput(s.cmd + ' ')}
-                className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--brand)] transition-colors cursor-pointer"
+                onClick={() => { setInput(s.cmd + ' '); setActiveSuggestionIdx(-1) }}
+                className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                  i === activeSuggestionIdx
+                    ? 'border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--text-primary)]'
+                    : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--brand)]'
+                }`}
               >
                 <Icon icon={s.icon} width={10} height={10} className="text-[var(--brand)]" />
                 <span className="font-mono text-[var(--brand)]">{s.cmd}</span>
@@ -590,7 +620,7 @@ export function AgentPanel() {
           <textarea
             ref={inputRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={e => { setInput(e.target.value); setActiveSuggestionIdx(-1) }}
             onKeyDown={handleKeyDown}
             placeholder={activeFile ? `Ask about ${activeFile.split('/').pop()}...` : 'Ask or type /command...'}
             rows={1}
