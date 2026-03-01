@@ -1032,7 +1032,15 @@ export function AgentPanel() {
 
       {/* Messages */}
       {messages.length > 0 && (
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-3 py-3 space-y-3 min-h-0 scroll-shadow"
+        onScroll={e => {
+          const el = e.currentTarget
+          el.classList.toggle('has-scroll-top', el.scrollTop > 8)
+          el.classList.toggle('has-scroll-bottom', el.scrollTop + el.clientHeight < el.scrollHeight - 8)
+        }}
+      >
         {messages.map(msg => (
           <div key={msg.id} className={`group/msg flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-fade-in-up`} style={{ animationDuration: '0.2s' }}>
             <div className={`max-w-[90%] min-w-0 rounded-xl px-3 py-2 text-[12px] leading-relaxed ${
@@ -1133,11 +1141,14 @@ export function AgentPanel() {
               </div>
             ) : (
               <div className="flex flex-col gap-1 px-3 py-2.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border)] rounded-bl-sm max-w-[90%]">
-                {/* Thinking trail */}
+                {/* Thinking trail — timeline style */}
                 {thinkingTrail.length > 0 && (
-                  <div className="flex flex-col gap-0.5 mb-1.5 pl-1 border-l-2 border-[color-mix(in_srgb,var(--brand)_30%,transparent)]">
+                  <div className="relative flex flex-col gap-0 mb-1.5 ml-1">
+                    {/* Continuous timeline line */}
+                    <div className="absolute left-[4px] top-1 bottom-1 w-px bg-[color-mix(in_srgb,var(--brand)_20%,transparent)]" />
                     {thinkingTrail.map((step, i) => {
                       const isLast = i === thinkingTrail.length - 1
+                      const age = thinkingTrail.length - 1 - i
                       const icon = step.startsWith('Reading') ? 'lucide:file-text' :
                         step.startsWith('Searching') ? 'lucide:search' :
                         step.startsWith('Exploring') ? 'lucide:folder-open' :
@@ -1147,17 +1158,29 @@ export function AgentPanel() {
                         step.startsWith('Analyzing') ? 'lucide:scan' :
                         'lucide:sparkles'
                       return (
-                        <div key={i} className={`flex items-center gap-1.5 text-[10px] pl-2 transition-all duration-300 plan-step-enter ${
-                          isLast ? 'text-[var(--text-secondary)]' : 'text-[var(--text-disabled)] opacity-60'
-                        }`}>
-                          <Icon icon={icon} width={10} height={10} className={`shrink-0 ${isLast ? 'text-[var(--brand)]' : ''}`} />
-                          <span className="truncate flex-1">{step}</span>
-                          {isLast && (
-                            <span className="relative flex h-1.5 w-1.5 shrink-0">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand)] opacity-75" />
-                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[var(--brand)]" />
-                            </span>
-                          )}
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 text-[10px] py-0.5 plan-step-enter"
+                          style={{
+                            opacity: isLast ? 1 : Math.max(0.3, 1 - age * 0.2),
+                            transform: isLast ? 'scale(1)' : `scale(${Math.max(0.96, 1 - age * 0.01)})`,
+                            filter: age > 2 ? `blur(${Math.min(0.4, (age - 2) * 0.2)}px)` : 'none',
+                            transition: 'all 0.3s ease',
+                          }}
+                        >
+                          {/* Timeline dot */}
+                          <div className="relative z-[1] shrink-0">
+                            {isLast ? (
+                              <span className="relative flex h-[9px] w-[9px]">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--brand)] opacity-50" />
+                                <span className="relative inline-flex rounded-full h-[9px] w-[9px] bg-[var(--brand)]" />
+                              </span>
+                            ) : (
+                              <span className="block w-[9px] h-[9px] rounded-full border-2 border-[color-mix(in_srgb,var(--brand)_30%,var(--border))] bg-[var(--bg-subtle)]" />
+                            )}
+                          </div>
+                          <Icon icon={icon} width={10} height={10} className={`shrink-0 ${isLast ? 'text-[var(--brand)]' : 'text-[var(--text-disabled)]'}`} />
+                          <span className={`truncate flex-1 ${isLast ? 'text-[var(--text-secondary)] font-medium' : 'text-[var(--text-disabled)]'}`}>{step}</span>
                         </div>
                       )
                     })}

@@ -180,10 +180,10 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, collapsed, onToggl
       tabIndex={0}
       onClick={() => onSelect(s.id)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s.id) } }}
-      className={`group relative w-full text-left px-3 py-2.5 rounded-lg transition-all cursor-pointer ${
+      className={`group relative w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer ${
         activeId === s.id
-          ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)]'
-          : 'hover:bg-[var(--bg-subtle)] border border-transparent'
+          ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] shadow-[inset_2px_0_0_var(--brand)]'
+          : 'hover:bg-[var(--bg-subtle)] hover:translate-x-0.5 border border-transparent'
       }`}
     >
       <div className="flex items-center gap-2 mb-0.5">
@@ -252,7 +252,19 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, collapsed, onToggl
       <div className="h-px bg-[var(--border)] mx-3" />
 
       {/* Chat list */}
-      <div className="flex-1 overflow-y-auto px-2 pt-1.5">
+      <div
+        className="flex-1 overflow-y-auto px-2 pt-1.5 scroll-shadow"
+        onScroll={e => {
+          const el = e.currentTarget
+          el.classList.toggle('has-scroll-top', el.scrollTop > 8)
+          el.classList.toggle('has-scroll-bottom', el.scrollTop + el.clientHeight < el.scrollHeight - 8)
+        }}
+        ref={el => {
+          if (el) {
+            el.classList.toggle('has-scroll-bottom', el.scrollHeight > el.clientHeight + 8)
+          }
+        }}
+      >
         {pinned.length > 0 && (
           <>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] px-3 pt-3 pb-1.5">Pinned</div>
@@ -266,9 +278,13 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, collapsed, onToggl
             ? filteredRecent.map(renderSession)
             : (
               <div className="px-3 py-8 text-center">
-                <Icon icon="lucide:message-square-plus" width={28} height={28} className="mx-auto mb-2.5 text-[var(--text-disabled)]" />
-                <p className="text-[12px] text-[var(--text-disabled)]">No chats yet</p>
-                <p className="text-[11px] text-[var(--text-disabled)] mt-1">Start a conversation to begin</p>
+                <Icon icon="lucide:message-square-plus" width={28} height={28} className="mx-auto mb-2.5 text-[var(--text-disabled)] animate-breathe" />
+                <p className="text-[12px] text-[var(--text-disabled)]">
+                  {repoName ? `Ready to work on ${repoName.split('/').pop()}` : 'Pick a repo and start building'}
+                </p>
+                <p className="text-[11px] text-[var(--text-disabled)] mt-1">
+                  {repoName ? "What's first?" : 'New chat to begin'}
+                </p>
               </div>
             )
           }
@@ -313,7 +329,7 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, collapsed, onToggl
 
       {/* Resize handle */}
       <div
-        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--brand)] transition-colors z-10 opacity-0 hover:opacity-60"
+        className="resize-handle absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--brand)] transition-all z-10 opacity-0 hover:opacity-60 hover:w-1.5"
         onMouseDown={startResize}
       />
     </div>

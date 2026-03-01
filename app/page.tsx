@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { Icon } from '@iconify/react'
 import { useGateway } from '@/context/gateway-context'
@@ -51,6 +51,12 @@ export default function EditorLayout() {
   const [isMacTauri, setIsMacTauri] = useState(false)
   const [showLanding, setShowLanding] = useState(false)
   const [agentMode, setAgentMode] = useState<string>('agent')
+  const [flashedTab, setFlashedTab] = useState<ViewId | null>(null)
+  const [prevStatus, setPrevStatus] = useState(status)
+  const [connectionAnim, setConnectionAnim] = useState<'pop' | 'pulse' | null>(null)
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const tabContainerRef = useRef<HTMLDivElement>(null)
+  const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   // Overlay modals
   const [quickOpenVisible, setQuickOpenVisible] = useState(false)
@@ -69,6 +75,31 @@ export default function EditorLayout() {
   useEffect(() => {
     try { localStorage.setItem('code-editor:sidebar-collapsed', String(sidebarCollapsed)) } catch {}
   }, [sidebarCollapsed])
+
+  // ─── Sliding tab indicator measurement ─────────────────
+  const visibleViews: ViewId[] = ['chat', 'editor', 'git', 'prs']
+  useLayoutEffect(() => {
+    const idx = visibleViews.indexOf(activeView)
+    const tab = tabRefs.current[idx]
+    const container = tabContainerRef.current
+    if (tab && container) {
+      const cRect = container.getBoundingClientRect()
+      const tRect = tab.getBoundingClientRect()
+      setIndicatorStyle({ left: tRect.left - cRect.left, width: tRect.width })
+    }
+  }, [activeView, sidebarCollapsed])
+
+  // ─── Connection state transitions ─────────────────────
+  useEffect(() => {
+    if (prevStatus !== status) {
+      if (status === 'connected' && prevStatus !== 'connected') {
+        setConnectionAnim('pop')
+        const t = setTimeout(() => setConnectionAnim(null), 600)
+        return () => clearTimeout(t)
+      }
+    }
+    setPrevStatus(status)
+  }, [status, prevStatus])
 
   // ─── Keyboard shortcuts ────────────────────────────────
   useEffect(() => {
@@ -92,7 +123,10 @@ export default function EditorLayout() {
       if (meta && e.key >= '1' && e.key <= '5') {
         e.preventDefault()
         const views: ViewId[] = ['chat', 'editor', 'git', 'prs', 'settings']
-        setView(views[parseInt(e.key) - 1])
+        const target = views[parseInt(e.key) - 1]
+        setView(target)
+        setFlashedTab(target)
+        setTimeout(() => setFlashedTab(null), 400)
       }
     }
     window.addEventListener('keydown', handler)
@@ -239,9 +273,6 @@ export default function EditorLayout() {
 
   const dirtyCount = files.filter(f => f.dirty).length
 
-  // ─── View tabs for sidebar ──────────────────────────────
-  const visibleViews: ViewId[] = ['chat', 'editor', 'git', 'prs']
-
   return (
     <div className="flex h-full w-full bg-[var(--bg)] text-[var(--text-primary)] overflow-hidden">
       {/* Tauri drag region */}
@@ -263,45 +294,59 @@ export default function EditorLayout() {
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {/* View navigation bar */}
         <div className={`flex items-center h-10 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 px-2.5 gap-1 ${isMacTauri && sidebarCollapsed ? 'pl-20' : ''}`}>
-          {/* View tabs */}
-          {visibleViews.map((v, i) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all cursor-pointer ${
-                activeView === v
-                  ? 'text-[var(--text-primary)] bg-[var(--bg-subtle)]'
-                  : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'
-              }`}
-              title={`${VIEW_ICONS[v].label} (⌘${i + 1})`}
-            >
-              <Icon icon={VIEW_ICONS[v].icon} width={15} height={15} />
-              <span className="hidden sm:inline">{VIEW_ICONS[v].label}</span>
-              {v === 'git' && dirtyCount > 0 && (
-                <span className="px-1 min-w-[16px] text-center rounded-full bg-[var(--brand)] text-white text-[9px] leading-[16px]">{dirtyCount}</span>
-              )}
-            </button>
-          ))}
+          {/* View tabs with sliding indicator */}
+          <div ref={tabContainerRef} className="relative flex items-center gap-1">
+            <span
+              className="absolute top-1/2 -translate-y-1/2 h-[28px] rounded-md bg-[var(--bg-subtle)] transition-all duration-300 pointer-events-none"
+              style={{
+                left: indicatorStyle.left,
+                width: indicatorStyle.width,
+                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                opacity: indicatorStyle.width > 0 ? 1 : 0,
+              }}
+            />
+            {visibleViews.map((v, i) => (
+              <button
+                key={v}
+                ref={el => { tabRefs.current[i] = el }}
+                onClick={() => setView(v)}
+                className={`relative z-[1] flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors duration-200 cursor-pointer ${
+                  activeView === v
+                    ? 'text-[var(--text-primary)]'
+                    : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'
+                } ${flashedTab === v ? 'ring-1 ring-[var(--brand)] ring-opacity-60' : ''}`}
+                title={`${VIEW_ICONS[v].label} (⌘${i + 1})`}
+              >
+                <Icon icon={VIEW_ICONS[v].icon} width={15} height={15} />
+                <span className="hidden sm:inline">{VIEW_ICONS[v].label}</span>
+                {v === 'git' && dirtyCount > 0 && (
+                  <span className="px-1 min-w-[16px] text-center rounded-full bg-[var(--brand)] text-white text-[9px] leading-[16px] animate-badge-pop">{dirtyCount}</span>
+                )}
+              </button>
+            ))}
+          </div>
 
           <div className="flex-1 tauri-drag-region" data-tauri-drag-region />
 
           {/* Settings */}
-          <button onClick={() => setSettingsVisible(true)} className="p-1.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer" title="Settings">
+          <button onClick={() => setSettingsVisible(true)} className="p-1.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors" title="Settings">
             <Icon icon="lucide:settings" width={16} height={16} />
           </button>
         </div>
 
-        {/* Active view */}
+        {/* Active view with crossfade transition */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
-          {activeView === 'chat' && <ChatView />}
-          {activeView === 'editor' && <EditorView />}
-          {activeView === 'git' && <GitView />}
-          {activeView === 'prs' && <PrView />}
-          {activeView === 'settings' && (
-            <div className="flex-1 flex items-center justify-center">
-              <SettingsPanel open={true} onClose={() => setView('chat')} />
-            </div>
-          )}
+          <div key={activeView} className="flex-1 flex min-h-0 overflow-hidden view-enter">
+            {activeView === 'chat' && <ChatView />}
+            {activeView === 'editor' && <EditorView />}
+            {activeView === 'git' && <GitView />}
+            {activeView === 'prs' && <PrView />}
+            {activeView === 'settings' && (
+              <div className="flex-1 flex items-center justify-center">
+                <SettingsPanel open={true} onClose={() => setView('chat')} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Status bar */}
@@ -320,7 +365,7 @@ export default function EditorLayout() {
               </span>
             )}
             {dirtyCount > 0 && (
-              <span className="flex items-center gap-1 text-[var(--warning,#eab308)]">
+              <span key={dirtyCount} className="flex items-center gap-1 text-[var(--warning,#eab308)] animate-badge-pop">
                 <Icon icon="lucide:circle-dot" width={8} height={8} />
                 {dirtyCount} unsaved
               </span>
@@ -328,9 +373,16 @@ export default function EditorLayout() {
           </div>
           <div className="flex items-center gap-3">
             <span className="text-[var(--text-disabled)] font-medium">Knot Code</span>
-            {status === 'connected' && (
-              <span className="w-2 h-2 rounded-full bg-[var(--color-additions)]" title="Connected" />
-            )}
+            <span
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                status === 'connected'
+                  ? `bg-[var(--color-additions)] ${connectionAnim === 'pop' ? 'animate-badge-pop animate-glow-pulse' : ''}`
+                  : status === 'connecting' || status === 'authenticating'
+                    ? 'bg-[var(--warning,#eab308)] animate-pulse'
+                    : 'bg-[var(--text-disabled)] scale-75 opacity-60'
+              }`}
+              title={status === 'connected' ? 'Connected' : status === 'connecting' ? 'Connecting...' : 'Disconnected'}
+            />
           </div>
         </footer>
       </div>

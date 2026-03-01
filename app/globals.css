@@ -1238,11 +1238,13 @@ p { line-height: 1.6; }
   background: conic-gradient(
     from 180deg at 50% 50%,
     transparent 0deg,
-    color-mix(in srgb, var(--brand) 20%, transparent) 60deg,
-    color-mix(in srgb, var(--brand) 40%, transparent) 120deg,
-    transparent 180deg,
-    color-mix(in srgb, var(--brand) 20%, transparent) 240deg,
-    color-mix(in srgb, var(--brand) 40%, transparent) 300deg,
+    color-mix(in srgb, var(--brand) 30%, transparent) 45deg,
+    color-mix(in srgb, var(--brand) 60%, transparent) 90deg,
+    var(--brand) 135deg,
+    color-mix(in srgb, var(--brand) 60%, transparent) 180deg,
+    color-mix(in srgb, var(--brand) 30%, transparent) 225deg,
+    transparent 270deg,
+    color-mix(in srgb, var(--brand) 20%, transparent) 315deg,
     transparent 360deg
   );
   mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
@@ -1287,12 +1289,13 @@ p { line-height: 1.6; }
   box-shadow:
     0 20px 40px -12px color-mix(in srgb, var(--brand) 14%, rgba(0, 0, 0, 0.4)),
     0 8px 20px -8px rgba(0, 0, 0, 0.3),
-    0 0 0 1px color-mix(in srgb, var(--brand) 8%, transparent);
+    0 0 0 1px color-mix(in srgb, var(--brand) 8%, transparent),
+    0 0 24px -4px color-mix(in srgb, var(--brand) 10%, transparent);
 }
 
 .chat-input-3d-active::before {
   opacity: 1;
-  animation: chat-input-border-spin 6s linear infinite;
+  animation: chat-input-border-spin 4s linear infinite;
 }
 
 .chat-input-3d-active::after {
@@ -1555,6 +1558,93 @@ p { line-height: 1.6; }
 
 .animate-badge-pop {
   animation: badge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   View Transition — crossfade on view switch
+   ────────────────────────────────────────────────────────────────── */
+@keyframes view-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.view-enter {
+  animation: view-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter {
+    animation: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Resize Handles — grip dot pattern on hover
+   ────────────────────────────────────────────────────────────────── */
+.resize-handle {
+  position: relative;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 20px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  background-image: radial-gradient(circle, var(--text-disabled) 1px, transparent 1px);
+  background-size: 3px 5px;
+  background-repeat: repeat-y;
+  pointer-events: none;
+}
+
+.resize-handle:hover::after {
+  opacity: 1;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Scroll Shadows — gradient fade at scroll edges
+   ────────────────────────────────────────────────────────────────── */
+.scroll-shadow {
+  position: relative;
+}
+
+.scroll-shadow::before,
+.scroll-shadow::after {
+  content: '';
+  position: sticky;
+  left: 0;
+  right: 0;
+  height: 16px;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.scroll-shadow::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--bg, #0a0a0a), transparent);
+  display: block;
+  margin-bottom: -16px;
+}
+
+.scroll-shadow::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg, #0a0a0a), transparent);
+  display: block;
+  margin-top: -16px;
+}
+
+.scroll-shadow.has-scroll-top::before {
+  opacity: 1;
+}
+
+.scroll-shadow.has-scroll-bottom::after {
+  opacity: 1;
 }
 
 /* ──────────────────────────────────────────────────────────────────

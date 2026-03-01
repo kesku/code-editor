@@ -7,6 +7,8 @@ import type { AgentMode } from '@/components/mode-selector'
 import { useRepo } from '@/context/repo-context'
 import { useLocal } from '@/context/local-context'
 import { useGateway } from '@/context/gateway-context'
+import { useGitHubAuth } from '@/context/github-auth-context'
+import { getRecentFolders } from '@/context/local-context'
 
 const ACTIONS = [
   { icon: 'lucide:pencil', label: 'Edit', prefix: 'Edit ' },
@@ -27,15 +29,21 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
   const [modelName, setModelName] = useState('Opus 4.6')
   const [showModelMenu, setShowModelMenu] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
+  const [showTokenInput, setShowTokenInput] = useState(false)
+  const [tokenDraft, setTokenDraft] = useState('')
+  const [tokenRevealed, setTokenRevealed] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
   const { repo } = useRepo()
   const local = useLocal()
   const { sendRequest, status } = useGateway()
+  const { token: ghToken, authenticated, setManualToken, clearToken } = useGitHubAuth()
   const isConnected = status === 'connected'
 
   const repoShort = repo?.fullName?.split('/').pop() ?? local.rootPath?.split('/').pop() ?? null
+  const hasWorkspace = !!repoShort
+  const recentFolders = getRecentFolders()
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current || !isFocused) return
@@ -81,9 +89,22 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
     setInput('')
   }
 
+  const handleSaveToken = () => {
+    const trimmed = tokenDraft.trim()
+    if (!trimmed) return
+    setManualToken(trimmed)
+    setTokenDraft('')
+    setShowTokenInput(false)
+    setTokenRevealed(false)
+  }
+
+  const maskedToken = ghToken
+    ? `${ghToken.slice(0, 4)}${'•'.repeat(Math.min(ghToken.length - 8, 24))}${ghToken.slice(-4)}`
+    : ''
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6">
-      <div className="w-full max-w-[580px]">
+    <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto">
+      <div className="w-full max-w-[580px] py-6">
         <div className="flex justify-center mb-4">
           <KnotLogo size={40} />
         </div>
@@ -167,8 +188,146 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
           ))}
         </div>
 
-        {/* Repo link */}
-        {repoShort && (
+        {/* Workspace actions — shown when no folder/repo is open */}
+        {!hasWorkspace && (
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-[var(--border)]" />
+              <span className="text-[10px] uppercase tracking-widest text-[var(--text-disabled)] font-medium">Start</span>
+              <div className="flex-1 h-px bg-[var(--border)]" />
+            </div>
+
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={onSelectFolder}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-disabled)] hover:bg-[var(--bg-subtle)] transition-all cursor-pointer"
+              >
+                <Icon icon="lucide:folder-open" width={16} height={16} />
+                Open Folder
+              </button>
+              <button
+                onClick={onCloneRepo}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-disabled)] hover:bg-[var(--bg-subtle)] transition-all cursor-pointer"
+              >
+                <Icon icon="lucide:git-branch" width={16} height={16} />
+                Clone Repository
+              </button>
+            </div>
+
+            {/* Recent folders */}
+            {recentFolders.length > 0 && (
+              <div className="mt-2">
+                <p className="text-[10px] uppercase tracking-widest text-[var(--text-disabled)] font-medium mb-1.5 text-center">Recent</p>
+                <div className="flex flex-col gap-0.5">
+                  {recentFolders.slice(0, 3).map(folder => {
+                    const name = folder.split('/').pop() || folder
+                    const parent = folder.split('/').slice(0, -1).join('/') || '/'
+                    return (
+                      <button
+                        key={folder}
+                        onClick={() => local.setRootPath(folder)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-left hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer group"
+                      >
+                        <Icon icon="lucide:folder" width={14} height={14} className="text-[var(--text-disabled)] group-hover:text-[var(--text-tertiary)] shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[12px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate">{name}</div>
+                          <div className="text-[10px] text-[var(--text-disabled)] truncate">{parent}</div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* GitHub Token */}
+            <div className="mt-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex-1 h-px bg-[var(--border)]" />
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-disabled)] font-medium">GitHub</span>
+                <div className="flex-1 h-px bg-[var(--border)]" />
+              </div>
+
+              {authenticated ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)]">
+                  <Icon icon="lucide:check-circle" width={14} height={14} className="text-[var(--success)] shrink-0" />
+                  <span className="text-[12px] text-[var(--text-secondary)] flex-1 font-mono truncate">
+                    {tokenRevealed ? ghToken : maskedToken}
+                  </span>
+                  <button
+                    onClick={() => setTokenRevealed(v => !v)}
+                    className="p-1 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+                    title={tokenRevealed ? 'Hide token' : 'Reveal token'}
+                  >
+                    <Icon icon={tokenRevealed ? 'lucide:eye-off' : 'lucide:eye'} width={13} height={13} />
+                  </button>
+                  <button
+                    onClick={() => { clearToken(); setTokenRevealed(false) }}
+                    className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--error)_10%,transparent)] text-[var(--text-disabled)] hover:text-[var(--error)] transition-colors cursor-pointer"
+                    title="Remove token"
+                  >
+                    <Icon icon="lucide:x" width={13} height={13} />
+                  </button>
+                </div>
+              ) : showTokenInput ? (
+                <div className="flex items-center gap-1.5">
+                  <div className="flex-1 flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-1.5 focus-within:border-[var(--border-focus)] transition-colors">
+                    <Icon icon="lucide:key" width={13} height={13} className="text-[var(--text-disabled)] shrink-0" />
+                    <input
+                      type={tokenRevealed ? 'text' : 'password'}
+                      value={tokenDraft}
+                      onChange={e => setTokenDraft(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveToken(); if (e.key === 'Escape') { setShowTokenInput(false); setTokenDraft(''); setTokenRevealed(false) } }}
+                      placeholder="ghp_... or github_pat_..."
+                      autoFocus
+                      className="flex-1 bg-transparent text-[12px] font-mono text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none min-w-0"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      onClick={() => setTokenRevealed(v => !v)}
+                      className="p-0.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+                      title={tokenRevealed ? 'Hide' : 'Reveal'}
+                    >
+                      <Icon icon={tokenRevealed ? 'lucide:eye-off' : 'lucide:eye'} width={12} height={12} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleSaveToken}
+                    disabled={!tokenDraft.trim()}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
+                      tokenDraft.trim()
+                        ? 'bg-[var(--brand)] text-[var(--brand-contrast)] hover:bg-[var(--brand-hover)]'
+                        : 'bg-[var(--bg-subtle)] text-[var(--text-disabled)] cursor-not-allowed'
+                    }`}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setShowTokenInput(false); setTokenDraft(''); setTokenRevealed(false) }}
+                    className="p-1.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+                  >
+                    <Icon icon="lucide:x" width={13} height={13} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowTokenInput(true)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[var(--border)] text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--text-disabled)] transition-all cursor-pointer"
+                >
+                  <Icon icon="lucide:key" width={14} height={14} />
+                  Add GitHub Token
+                </button>
+              )}
+              <p className="text-[10px] text-[var(--text-disabled)] text-center mt-1.5">
+                {authenticated ? 'Token saved locally. Never sent to any server.' : 'Required for remote repos. Generate at github.com/settings/tokens'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Repo link — shown when workspace is open */}
+        {hasWorkspace && (
           <div className="text-center mt-5">
             <button onClick={onSelectFolder} className="inline-flex items-center gap-1.5 text-[12px] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer">
               <Icon icon="lucide:folder-git-2" width={12} height={12} />

@@ -63,7 +63,7 @@ export function EditorView() {
 
       {/* Tree resize handle */}
       {treeVisible && (
-        <div className="w-[3px] cursor-col-resize hover:bg-[var(--brand)] transition-colors opacity-0 hover:opacity-50 shrink-0 z-10"
+        <div className="resize-handle w-[3px] cursor-col-resize hover:bg-[var(--brand)] transition-all opacity-0 hover:opacity-50 shrink-0 z-10"
           onMouseDown={e => {
             e.preventDefault(); const startX = e.clientX; const startW = treeWidth
             const onMove = (ev: MouseEvent) => setTreeWidth(Math.max(160, Math.min(400, startW + (ev.clientX - startX))))
