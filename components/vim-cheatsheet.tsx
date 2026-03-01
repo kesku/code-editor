@@ -143,7 +143,7 @@ export function VimCheatsheet({ open, onClose }: VimCheatsheetProps) {
     .filter(s => s.keys.length > 0)
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[8vh] px-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
