@@ -264,6 +264,7 @@ function EditorLayout() {
   const [explorerVisible, setExplorerVisible] = useState(true)
   const [quickOpenVisible, setQuickOpenVisible] = useState(false)
   const [shortcutsVisible, setShortcutsVisible] = useState(false)
+  const [isMacTauri, setIsMacTauri] = useState(false)
 
   const dirtyCount = files.filter(f => f.dirty).length
 
@@ -324,10 +325,20 @@ function EditorLayout() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  useEffect(() => {
+    const tauriWindow = window as Window & {
+      __TAURI__?: unknown
+      __TAURI_INTERNALS__?: unknown
+    }
+    const runningInTauri = Boolean(tauriWindow.__TAURI__ || tauriWindow.__TAURI_INTERNALS__)
+    const isMacOS = navigator.userAgent.includes('Mac')
+    setIsMacTauri(runningInTauri && isMacOS)
+  }, [])
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-4 h-11 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0">
+      <header className={`flex items-center justify-between h-11 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 ${isMacTauri ? 'pl-20 pr-4' : 'px-4'}`}>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setExplorerVisible(v => !v)}
