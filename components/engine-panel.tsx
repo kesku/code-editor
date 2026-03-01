@@ -53,7 +53,7 @@ export function EnginePanel() {
     return (
       <div className="flex flex-col items-center justify-center h-full text-[var(--text-secondary)] p-6">
         <Icon icon="lucide:server" width={40} height={40} className="opacity-30 mb-4" />
-        <p className="text-sm text-center">Engine management available in the desktop app</p>
+        <p className="text-sm text-center">Gateway Engine management available in the desktop app</p>
       </div>
     )
   }
@@ -67,7 +67,7 @@ export function EnginePanel() {
       <div className="p-4 border-b border-[var(--border)]">
         <div className="flex items-center gap-2 mb-1">
           <Icon icon="lucide:cpu" width={18} height={18} className="text-[var(--brand)]" />
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">OpenClaw Engine</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">OpenClaw Gateway Engine</h2>
         </div>
         <p className="text-[11px] text-[var(--text-tertiary)]">
           Local gateway powering the AI experience
@@ -179,7 +179,7 @@ export function EnginePanel() {
         {/* Info section */}
         <div className="space-y-3 pt-2">
           <h3 className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
-            What is the Engine?
+            What is the Gateway Engine?
           </h3>
           <div className="space-y-2 text-[12px] text-[var(--text-secondary)]">
             <div className="flex gap-2">

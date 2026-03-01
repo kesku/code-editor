@@ -356,8 +356,8 @@ function EditorLayout() {
           <button
             onClick={() => setExplorerVisible(v => !v)}
             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isTauriDesktop ? 'tauri-no-drag' : ''} ${explorerVisible
-                ? 'text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+              ? 'text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+              : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
               }`}
             title={`${explorerVisible ? 'Hide' : 'Show'} explorer (\u2318B)`}
           >
@@ -391,8 +391,8 @@ function EditorLayout() {
           <button
             onClick={() => setAgentOpen(!agentOpen)}
             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${isTauriDesktop ? 'tauri-no-drag' : ''} ${agentOpen
-                ? 'text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,transparent)]'
-                : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+              ? 'text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,transparent)]'
+              : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
               }`}
             title={`${agentOpen ? 'Hide' : 'Show'} agent (\u2318J)`}
           >
@@ -428,25 +428,23 @@ function EditorLayout() {
               <div className="flex items-center h-9 bg-[var(--bg-secondary)] border-b border-[var(--border)] px-2 gap-1 shrink-0">
                 <button
                   onClick={() => setSidebarTab('agent')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors cursor-pointer ${
-                    sidebarTab === 'agent'
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors cursor-pointer ${sidebarTab === 'agent'
                       ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
+                    }`}
                 >
                   <Icon icon="lucide:sparkles" width={12} height={12} />
                   Agent
                 </button>
                 <button
                   onClick={() => setSidebarTab('engine')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors cursor-pointer ${
-                    sidebarTab === 'engine'
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] transition-colors cursor-pointer ${sidebarTab === 'engine'
                       ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]'
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
+                    }`}
                 >
                   <Icon icon="lucide:cpu" width={12} height={12} />
-                  Engine
+                  Gateway Engine
                 </button>
               </div>
               {/* Tab content */}
@@ -517,9 +515,8 @@ function EditorLayout() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setTerminalVisible(v => !v)}
-            className={`flex items-center gap-1 cursor-pointer hover:text-[var(--text-secondary)] transition-colors ${
-              terminalVisible ? 'text-[var(--brand)]' : ''
-            }`}
+            className={`flex items-center gap-1 cursor-pointer hover:text-[var(--text-secondary)] transition-colors ${terminalVisible ? 'text-[var(--brand)]' : ''
+              }`}
             title="Toggle terminal (⌘\`)"
           >
             <Icon icon="lucide:terminal" width={10} height={10} />
