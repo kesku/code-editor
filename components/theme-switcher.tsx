@@ -62,28 +62,34 @@ export function ThemeSwitcher() {
           <div className="h-px bg-[var(--border)] mx-2 my-1" />
 
           {/* Theme selector */}
-          <div className="px-2.5 pt-1 pb-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">Theme</span>
-          </div>
-          {THEME_PRESETS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { setThemeId(t.id); setOpen(false) }}
-              className={`flex items-center gap-2.5 w-full px-3 py-1.5 text-left transition-colors cursor-pointer ${
-                themeId === t.id
-                  ? 'bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] text-[var(--text-primary)]'
-                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <span
-                className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
-                style={{ backgroundColor: t.color }}
-              />
-              <span className="text-[12px]">{t.label}</span>
-              {themeId === t.id && (
-                <Icon icon="lucide:check" width={12} height={12} className="ml-auto text-[var(--brand)]" />
-              )}
-            </button>
+          {(['core', 'tweakcn'] as const).map(group => (
+            <div key={group}>
+              <div className="px-2.5 pt-1.5 pb-0.5">
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)]">
+                  {group === 'core' ? 'Themes' : 'tweakcn'}
+                </span>
+              </div>
+              {THEME_PRESETS.filter(t => t.group === group).map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { setThemeId(t.id); setOpen(false) }}
+                  className={`flex items-center gap-2.5 w-full px-3 py-1.5 text-left transition-colors cursor-pointer ${
+                    themeId === t.id
+                      ? 'bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] text-[var(--text-primary)]'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0 border border-[var(--border)]"
+                    style={{ backgroundColor: t.color }}
+                  />
+                  <span className="text-[12px]">{t.label}</span>
+                  {themeId === t.id && (
+                    <Icon icon="lucide:check" width={12} height={12} className="ml-auto text-[var(--brand)]" />
+                  )}
+                </button>
+              ))}
+            </div>
           ))}
 
           <div className="h-px bg-[var(--border)] mx-2 my-1" />

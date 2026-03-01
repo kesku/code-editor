@@ -1,41 +1,125 @@
 'use client'
 
+import { useState, useCallback, useRef } from 'react'
 import { Icon } from '@iconify/react'
 import { useEditor } from '@/context/editor-context'
 
+const EXT_ICONS: Record<string, { icon: string; color: string }> = {
+  ts: { icon: 'lucide:file-code', color: '#3178c6' },
+  tsx: { icon: 'lucide:file-code', color: '#3178c6' },
+  js: { icon: 'lucide:file-code', color: '#f7df1e' },
+  jsx: { icon: 'lucide:file-code', color: '#f7df1e' },
+  css: { icon: 'lucide:palette', color: '#264de4' },
+  scss: { icon: 'lucide:palette', color: '#cd6799' },
+  json: { icon: 'lucide:braces', color: '#f7df1e' },
+  md: { icon: 'lucide:file-text', color: '#519aba' },
+  mdx: { icon: 'lucide:file-text', color: '#519aba' },
+  html: { icon: 'lucide:globe', color: '#e44d26' },
+  svg: { icon: 'lucide:image', color: '#ffb13b' },
+  py: { icon: 'lucide:file-code', color: '#3776ab' },
+  rs: { icon: 'lucide:file-code', color: '#dea584' },
+  toml: { icon: 'lucide:settings', color: '#9c4121' },
+  yml: { icon: 'lucide:settings', color: '#cb171e' },
+  yaml: { icon: 'lucide:settings', color: '#cb171e' },
+  sh: { icon: 'lucide:terminal', color: '#4eaa25' },
+}
+
+function getFileIcon(path: string) {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  return EXT_ICONS[ext] ?? { icon: 'lucide:file', color: 'var(--text-tertiary)' }
+}
+
 export function EditorTabs() {
-  const { files, activeFile, setActiveFile, closeFile } = useEditor()
+  const { files, activeFile, setActiveFile, closeFile, reorderFiles } = useEditor()
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<number | null>(null)
+  const dragNode = useRef<HTMLDivElement | null>(null)
+
+  const handleDragStart = useCallback((e: React.DragEvent, index: number) => {
+    setDragIndex(index)
+    dragNode.current = e.currentTarget as HTMLDivElement
+    e.dataTransfer.effectAllowed = 'move'
+    // Make drag image semi-transparent
+    requestAnimationFrame(() => {
+      if (dragNode.current) dragNode.current.style.opacity = '0.4'
+    })
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    if (dragNode.current) dragNode.current.style.opacity = '1'
+    if (dragIndex !== null && dropTarget !== null && dragIndex !== dropTarget) {
+      reorderFiles(dragIndex, dropTarget)
+    }
+    setDragIndex(null)
+    setDropTarget(null)
+    dragNode.current = null
+  }, [dragIndex, dropTarget, reorderFiles])
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDropTarget(index)
+  }, [])
 
   if (files.length === 0) return null
 
   return (
-    <div className="flex items-center border-b border-[var(--border)] bg-[var(--bg)] overflow-x-auto no-scrollbar shrink-0">
-      {files.map(file => {
+    <div className="flex items-center border-b border-[var(--border)] bg-[var(--bg)] overflow-x-auto no-scrollbar shrink-0 h-[34px]">
+      {files.map((file, index) => {
         const name = file.path.split('/').pop() ?? file.path
         const isActive = file.path === activeFile
+        const isDragTarget = dropTarget === index && dragIndex !== null && dragIndex !== index
+        const { icon, color } = getFileIcon(file.path)
+
         return (
           <div
             key={file.path}
-            className={`group flex items-center gap-1.5 px-3 py-1.5 border-r border-[var(--border)] cursor-pointer transition-colors min-w-0 shrink-0 ${
-              isActive
-                ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-b-2 border-b-[var(--brand)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] border-b-2 border-b-transparent'
-            }`}
+            draggable
+            onDragStart={e => handleDragStart(e, index)}
+            onDragEnd={handleDragEnd}
+            onDragOver={e => handleDragOver(e, index)}
+            onDragLeave={() => setDropTarget(null)}
+            className={`
+              group relative flex items-center gap-1.5 px-3 h-full cursor-pointer transition-all duration-150 select-none min-w-0 shrink-0
+              ${isActive
+                ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+              }
+              ${isDragTarget ? 'border-l-2 border-l-[var(--brand)]' : 'border-l-0'}
+            `}
             onClick={() => setActiveFile(file.path)}
           >
+            {/* Active indicator — bottom bar */}
+            {isActive && (
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--brand)]" />
+            )}
+
+            {/* File icon */}
+            <Icon icon={icon} width={13} height={13} style={{ color: isActive ? color : undefined }} className={isActive ? '' : 'text-[var(--text-tertiary)]'} />
+
+            {/* File name */}
             <span className="text-[11px] truncate max-w-[120px]" title={file.path}>
               {name}
             </span>
+
+            {/* Dirty indicator */}
             {file.dirty && (
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shrink-0" title="Unsaved changes" />
             )}
+
+            {/* Close button */}
             <button
               onClick={e => { e.stopPropagation(); closeFile(file.path) }}
-              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--bg-subtle)] transition-all cursor-pointer"
-              title="Close"
+              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-primary)_10%,transparent)] transition-all cursor-pointer ml-0.5"
+              title="Close (⌘W)"
             >
-              <Icon icon="lucide:x" width={10} height={10} />
+              <Icon icon="lucide:x" width={11} height={11} />
             </button>
+
+            {/* Separator */}
+            {!isActive && (
+              <div className="absolute right-0 top-[6px] bottom-[6px] w-px bg-[var(--border)] opacity-50" />
+            )}
           </div>
         )
       })}

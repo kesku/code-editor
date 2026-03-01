@@ -10,13 +10,18 @@ export interface ThemePreset {
   id: ThemeId
   label: string
   color: string
+  group: 'core' | 'tweakcn'
 }
 
 export const THEME_PRESETS: ThemePreset[] = [
-  { id: 'obsidian', label: 'Obsidian', color: '#ca3a29' },
-  { id: 'neon', label: 'Neon', color: '#a855f7' },
-  { id: 'catppuccin-mocha', label: 'Catppuccin', color: '#cba6f7' },
-  { id: 'bone', label: 'Bone', color: '#78716c' },
+  { id: 'obsidian', label: 'Obsidian', color: '#ca3a29', group: 'core' },
+  { id: 'neon', label: 'Neon', color: '#a855f7', group: 'core' },
+  { id: 'catppuccin-mocha', label: 'Catppuccin', color: '#cba6f7', group: 'core' },
+  { id: 'bone', label: 'Bone', color: '#78716c', group: 'core' },
+  { id: 'caffeine', label: 'Caffeine', color: '#c49a5c', group: 'tweakcn' },
+  { id: 'claymorphism', label: 'Claymorphism', color: '#b48ead', group: 'tweakcn' },
+  { id: 'vercel', label: 'Vercel', color: '#ededed', group: 'tweakcn' },
+  { id: 'vintage-paper', label: 'Vintage Paper', color: '#8b5e3c', group: 'tweakcn' },
 ]
 
 interface ThemeContextValue {

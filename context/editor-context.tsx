@@ -28,6 +28,7 @@ interface EditorContextValue {
   closeFile: (path: string) => void
   updateFileContent: (path: string, content: string) => void
   markClean: (path: string, newSha?: string) => void
+  reorderFiles: (fromIndex: number, toIndex: number) => void
   getFile: (path: string) => OpenFile | undefined
 }
 
@@ -96,6 +97,15 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     ))
   }, [])
 
+  const reorderFiles = useCallback((fromIndex: number, toIndex: number) => {
+    setFiles(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+  }, [])
+
   const getFile = useCallback((path: string) => files.find(f => f.path === path), [files])
 
   // Persist open tab paths to localStorage
@@ -108,7 +118,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, [files, activeFile])
 
   return (
-    <EditorContext.Provider value={{ files, activeFile, setActiveFile, openFile, closeFile, updateFileContent, markClean, getFile }}>
+    <EditorContext.Provider value={{ files, activeFile, setActiveFile, openFile, closeFile, updateFileContent, markClean, reorderFiles, getFile }}>
       {children}
     </EditorContext.Provider>
   )
