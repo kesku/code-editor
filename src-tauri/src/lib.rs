@@ -185,6 +185,7 @@ pub fn run() {
             engine::engine_start,
             engine::engine_stop,
             engine::engine_restart,
+            engine::engine_gateway_config,
             // Local filesystem commands
             local_fs::local_read_tree,
             local_fs::local_read_file,

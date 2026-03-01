@@ -99,3 +99,42 @@ pub fn engine_restart() -> Result<String, String> {
         Err(format!("{}{}", stdout, stderr).trim().to_string())
     }
 }
+
+
+#[derive(Clone, Serialize)]
+pub struct GatewayConfig {
+    pub url: String,
+    pub password: String,
+}
+
+#[tauri::command]
+pub fn engine_gateway_config() -> Result<GatewayConfig, String> {
+    // Read ~/.openclaw/openclaw.json for gateway port and password
+    let home = std::env::var("HOME").unwrap_or_default();
+    let config_path = std::path::PathBuf::from(&home).join(".openclaw/openclaw.json");
+
+    if !config_path.exists() {
+        return Err("Config not found".to_string());
+    }
+
+    let content = std::fs::read_to_string(&config_path)
+        .map_err(|e| format!("Failed to read config: {}", e))?;
+
+    let config: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse config: {}", e))?;
+
+    // Extract port (default 18789) and password
+    let port = config.get("port")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(18789);
+
+    let password = config.get("auth")
+        .and_then(|a| a.get("password"))
+        .and_then(|p| p.as_str())
+        .unwrap_or("");
+
+    Ok(GatewayConfig {
+        url: format!("ws://127.0.0.1:{}", port),
+        password: password.to_string(),
+    })
+}

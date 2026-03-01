@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react'
+import { isTauri, tauriInvoke } from '@/lib/tauri'
 import {
   type GatewayResponse,
   type GatewaySnapshot,
@@ -412,18 +413,48 @@ export function GatewayProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
-  // Auto-reconnect from stored credentials on mount
+  // Auto-connect on mount: stored creds → Tauri gateway config → nothing
   useEffect(() => {
-    try {
-      const url = localStorage.getItem(STORAGE_URL)
-      const pass = localStorage.getItem(STORAGE_PASS)
-      if (url && pass) {
-        credentialsRef.current = { url, password: pass }
-        setGatewayUrl(url)
-        doConnect(url, pass)
+    let cancelled = false
+
+    ;(async () => {
+      // 1. Try stored credentials first (fastest, user already connected before)
+      try {
+        const url = localStorage.getItem(STORAGE_URL)
+        const pass = localStorage.getItem(STORAGE_PASS)
+        if (url && pass) {
+          credentialsRef.current = { url, password: pass }
+          setGatewayUrl(url)
+          doConnect(url, pass)
+          return
+        }
+      } catch {}
+
+      // 2. On desktop (Tauri), read gateway config directly from ~/.openclaw/openclaw.json
+      if (isTauri()) {
+        try {
+          const config = await tauriInvoke<{ url: string; password: string }>('engine_gateway_config', {})
+          if (cancelled || !config) return
+
+          // Verify the gateway is actually running before connecting
+          const status = await tauriInvoke<{ running: boolean }>('engine_status', {})
+          if (cancelled) return
+
+          if (status?.running && config.url && config.password) {
+            credentialsRef.current = { url: config.url, password: config.password }
+            setGatewayUrl(config.url)
+            // Save to localStorage so future reconnects are instant
+            localStorage.setItem(STORAGE_URL, config.url)
+            localStorage.setItem(STORAGE_PASS, config.password)
+            doConnect(config.url, config.password)
+          }
+        } catch {
+          // Config not found or parse error — that's fine, gateway is optional
+        }
       }
-    } catch {}
-    return () => cleanup()
+    })()
+
+    return () => { cancelled = true; cleanup() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
