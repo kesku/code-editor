@@ -389,7 +389,7 @@ function EditorLayout() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Top bar — hidden in fresh start */}
-      {!isFreshStart && <header data-tauri-drag-region className={`flex items-center justify-between h-9 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 ${isTauriDesktop ? 'tauri-drag-region' : ''} ${isMacTauri ? 'pl-20 pr-4' : 'px-4'}`}>
+      {!isFreshStart && <header data-tauri-drag-region className={`flex items-center justify-between h-9 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 tauri-drag-region ${isMacTauri ? 'pl-20 pr-4' : 'px-4'}`}>
         <div className="flex items-center gap-2.5">
           <div className={isTauriDesktop ? 'tauri-no-drag' : ''}>
             <SourceSwitcher />
@@ -412,7 +412,15 @@ function EditorLayout() {
 
       {/* Main content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Workspace Sidebar — always visible */}
+        {/* Universal Tauri drag region — always present on desktop */}
+      {isTauriDesktop && (
+        <div
+          data-tauri-drag-region
+          className="tauri-drag-region fixed top-0 left-0 right-0 h-3 z-[9999]"
+        />
+      )}
+
+      {/* Workspace Sidebar — always visible */}
         <WorkspaceSidebar
           activeId={activeChatId ?? ''}
           onSelect={(id) => {
@@ -432,7 +440,13 @@ function EditorLayout() {
 
         {/* Fresh start — clean centered prompt, no chrome */}
         {isFreshStart ? (
-          <div className="flex-1 min-h-0 overflow-hidden bg-[var(--bg)]">
+          <div className="flex-1 min-h-0 overflow-hidden bg-[var(--bg)] relative">
+            {isTauriDesktop && (
+              <div
+                data-tauri-drag-region
+                className="tauri-drag-region absolute top-0 left-0 right-0 h-10 z-10"
+              />
+            )}
             <AgentPanel />
           </div>
         ) : (

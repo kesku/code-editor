@@ -223,7 +223,7 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, collapsed, onToggl
       {/* Branding + Header — extra top padding on Tauri for traffic lights */}
       <div className={`shrink-0 ${isTauriDesktop ? 'pt-7' : ''}`}>
         {/* Branding */}
-        <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+        <div data-tauri-drag-region className="flex items-center gap-2 px-3 pt-2.5 pb-1 tauri-drag-region">
           <div className="w-5 h-5 rounded-md bg-[var(--brand)] flex items-center justify-center">
             <Icon icon="lucide:code-2" width={11} height={11} className="text-white" />
           </div>
@@ -233,7 +233,7 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, collapsed, onToggl
               <div className="text-[9px] text-[var(--text-tertiary)] truncate">{repoName}</div>
             )}
           </div>
-          <button onClick={onToggle} className="p-0.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer" title="Collapse (⌘\\)">
+          <button onClick={onToggle} className="tauri-no-drag p-0.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer" title="Collapse (⌘\\)">
             <Icon icon="lucide:panel-left-close" width={13} height={13} />
           </button>
         </div>
