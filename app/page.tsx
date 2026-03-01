@@ -15,7 +15,7 @@ import { ThemeSwitcher } from '@/components/theme-switcher'
 import { QuickOpen } from '@/components/quick-open'
 import { ShortcutsOverlay } from '@/components/shortcuts-overlay'
 import { CommandPalette, type CommandId } from '@/components/command-palette'
-import { fetchFileContents, createOrUpdateFile } from '@/lib/github-client'
+import { fetchFileContents, createOrUpdateFile, commitFiles } from '@/lib/github-client'
 import { TerminalPanel } from '@/components/terminal-panel'
 import { ChangesPanel } from '@/components/changes-panel'
 import { EnginePanel } from '@/components/engine-panel'
@@ -296,22 +296,15 @@ function EditorLayout() {
       const { path } = (e as CustomEvent).detail
       if (!repo) return
       const file = files.find(f => f.path === path)
-      if (!file || !file.dirty) return
-
+      if (!file || file.kind !== 'text' || !file.dirty) return
       try {
-        const res = await fetch(`/api/github/repos/${repo.owner}/${repo.repo}/commit`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            branch: repo.branch,
-            message: `Update ${path}`,
-            files: [{ path, content: file.content, sha: file.sha }],
-          }),
+        const { sha } = await createOrUpdateFile(repo.fullName, file.path, {
+          content: file.content,
+          message: `Update ${path}`,
+          sha: file.sha,
+          branch: repo.branch,
         })
-        if (!res.ok) throw new Error(await res.text())
-        const data = await res.json()
-        // Mark file as clean
-        markClean(path, data.sha)
+        markClean(path, sha)
       } catch (err) {
         console.error('Save failed:', err)
       }
@@ -543,19 +536,15 @@ function EditorLayout() {
         onClose={() => setChangesVisible(false)}
         onCommit={async (message) => {
           if (!repo) return
-          const dirtyFiles = files.filter(f => f.dirty)
+          const dirtyFiles = files.filter(f => f.dirty && f.kind === 'text')
           if (dirtyFiles.length === 0) return
           try {
-            const res = await fetch(`/api/github/repos/${repo.owner}/${repo.repo}/commit`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                branch: repo.branch,
-                message,
-                files: dirtyFiles.map(f => ({ path: f.path, content: f.content, sha: f.sha })),
-              }),
-            })
-            if (!res.ok) throw new Error(await res.text())
+            await commitFiles(
+              repo.fullName,
+              dirtyFiles.map(f => ({ path: f.path, content: f.content, sha: f.sha })),
+              message,
+              repo.branch,
+            )
             dirtyFiles.forEach(f => markClean(f.path))
             setChangesVisible(false)
           } catch (err) {

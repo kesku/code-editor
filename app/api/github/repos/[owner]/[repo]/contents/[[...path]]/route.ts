@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireToken, githubFetch, errorResponse } from '@/app/api/github/_helpers'
 
+export const dynamic = 'force-static'
+export function generateStaticParams() { return [] }
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ owner: string; repo: string; path?: string[] }> }

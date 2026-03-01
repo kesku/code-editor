@@ -697,6 +697,91 @@ export async function fetchBranches(repo: string): Promise<Branch[]> {
   return res.json()
 }
 
+/**
+ * Commit one or more files directly via the GitHub API (browser-safe, no Node.js Buffer).
+ * Single file  → Contents API (PUT)
+ * Multi file   → Git Data API (blobs → tree → commit → update ref)
+ */
+export async function commitFiles(
+  repo: string,
+  files: Array<{ path: string; content: string; sha?: string }>,
+  message: string,
+  branch = 'main',
+): Promise<{ sha: string }> {
+  assertWritable()
+  if (files.length === 0) throw new GitHubClientError('No files provided')
+
+  if (files.length === 1) {
+    return createOrUpdateFile(repo, files[0]!.path, {
+      content: files[0]!.content,
+      message,
+      sha: files[0]!.sha,
+      branch,
+    })
+  }
+
+  const [owner, repoName] = repo.split('/')
+  const headers = {
+    ...authHeaders(),
+    ...GITHUB_API_HEADERS,
+    'Content-Type': 'application/json',
+  }
+
+  const gh = (path: string, init?: RequestInit) =>
+    fetch(`https://api.github.com/repos/${owner}/${repoName}/${path}`, { ...init, headers })
+
+  // 1. Resolve branch tip
+  const refRes = await gh(`git/ref/heads/${branch}`)
+  if (!refRes.ok) throw new GitHubClientError(`Failed to get ref: ${refRes.status}`, { status: refRes.status })
+  const { object: { sha: baseSha } } = await refRes.json() as { object: { sha: string } }
+
+  // 2. Get base tree sha
+  const commitRes = await gh(`git/commits/${baseSha}`)
+  if (!commitRes.ok) throw new GitHubClientError(`Failed to get commit: ${commitRes.status}`, { status: commitRes.status })
+  const { tree: { sha: baseTreeSha } } = await commitRes.json() as { tree: { sha: string } }
+
+  // 3. Create blobs
+  const treeItems = await Promise.all(
+    files.map(async (file) => {
+      const blobRes = await gh('git/blobs', {
+        method: 'POST',
+        body: JSON.stringify({
+          content: btoa(unescape(encodeURIComponent(file.content))),
+          encoding: 'base64',
+        }),
+      })
+      if (!blobRes.ok) throw new GitHubClientError(`Blob create failed: ${blobRes.status}`, { status: blobRes.status })
+      const { sha } = await blobRes.json() as { sha: string }
+      return { path: file.path, mode: '100644' as const, type: 'blob' as const, sha }
+    })
+  )
+
+  // 4. Create tree
+  const treeRes = await gh('git/trees', {
+    method: 'POST',
+    body: JSON.stringify({ base_tree: baseTreeSha, tree: treeItems }),
+  })
+  if (!treeRes.ok) throw new GitHubClientError(`Tree create failed: ${treeRes.status}`, { status: treeRes.status })
+  const { sha: treeSha } = await treeRes.json() as { sha: string }
+
+  // 5. Create commit
+  const newCommitRes = await gh('git/commits', {
+    method: 'POST',
+    body: JSON.stringify({ message, tree: treeSha, parents: [baseSha] }),
+  })
+  if (!newCommitRes.ok) throw new GitHubClientError(`Commit create failed: ${newCommitRes.status}`, { status: newCommitRes.status })
+  const { sha: newSha } = await newCommitRes.json() as { sha: string }
+
+  // 6. Update ref
+  const updateRes = await gh(`git/refs/heads/${branch}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ sha: newSha }),
+  })
+  if (!updateRes.ok) throw new GitHubClientError(`Ref update failed: ${updateRes.status}`, { status: updateRes.status })
+
+  return { sha: newSha }
+}
+
 export async function createOrUpdateFile(
   repo: string,
   path: string,

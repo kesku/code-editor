@@ -34,11 +34,9 @@ pnpm tauri:build  # builds .app + .dmg
 > First Tauri build takes 2-5 minutes (compiling Rust deps). Subsequent builds are fast.
 
 ## Features
-
 See [docs/FEATURES.md](docs/FEATURES.md) for the full feature list with current status and roadmap.
 
 ## Architecture
-
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the technical architecture, data flow, and component map.
 
 ## Troubleshooting
