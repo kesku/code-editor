@@ -3082,3 +3082,167 @@ p { line-height: 1.6; }
 .landing-footer-link:hover {
   color: var(--text-secondary, #a1a1a1);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   VooDoo Dark — A nod to ViewDue, where Nova was born ✨
+   Deep ritual purples, spectral greens, mystic energy
+   ══════════════════════════════════════════════════════════════════ */
+.dark[data-theme="voodoo"] {
+  --bg: #08060d;
+  --bg-elevated: #110e18;
+  --bg-subtle: #1a1525;
+  --bg-secondary: #0d0a14;
+  --bg-tertiary: #1e1830;
+  --sidebar-bg: #0a0710;
+  --foreground: #e8e0f0;
+  --subtle: #6b5f80;
+
+  --brand: #8b5cf6;
+  --brand-hover: #a78bfa;
+  --brand-muted: rgba(139, 92, 246, 0.14);
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --info: #818cf8;
+
+  --text-primary: #e8e0f0;
+  --text-secondary: #a89cc0;
+  --text-tertiary: #6b5f80;
+  --text-disabled: #3d3455;
+
+  --border: #2a2240;
+  --border-hover: #3d3460;
+  --border-focus: #8b5cf6;
+
+  --color-additions: #34d399;
+  --color-deletions: #f87171;
+
+  --glass-bg: rgba(8, 6, 13, 0.94);
+  --glass-bg-hover: var(--bg-subtle);
+  --glass-bg-elevated: var(--bg-subtle);
+  --glass-border: var(--border);
+  --glass-border-hover: rgba(139, 92, 246, 0.2);
+  --glass-shadow: rgba(0, 0, 0, 0.7);
+  --brand-glow: rgba(139, 92, 246, 0.18);
+  --brand-glow-subtle: rgba(139, 92, 246, 0.06);
+  --brand-deep: #5b3ab5;
+  --brand-chat: #7c5cc9;
+  --brand-contrast: #ffffff;
+
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.7);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.8), 0 0 40px rgba(139, 92, 246, 0.08);
+  --shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 60px rgba(139, 92, 246, 0.1);
+
+  --kn-claw: var(--brand);
+  --vscode-text: var(--text-primary);
+  --vscode-subtle: var(--text-tertiary);
+  --vscode-muted: var(--text-secondary);
+
+  --overlay: rgba(8, 6, 13, 0.60);
+  --logo-filter: none;
+
+  --scrollbar-thumb: #2a2240;
+  --scrollbar-thumb-hover: #3d3460;
+  --header-glass-bg: rgba(8, 6, 13, 0.94);
+  --shimmer-from: var(--bg-elevated);
+  --shimmer-via: #1e1830;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+}
+
+/* ── VooDoo Light — spectral dawn ─────────────────────────────── */
+[data-theme="voodoo"]:not(.dark) {
+  --bg: #faf8fc;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f3eef8;
+  --bg-secondary: #f7f3fb;
+  --bg-tertiary: #ede6f5;
+  --sidebar-bg: #f5f0fa;
+  --foreground: #1a1225;
+  --subtle: #9488a8;
+
+  --brand: #7c3aed;
+  --brand-hover: #6d28d9;
+  --brand-muted: rgba(124, 58, 237, 0.1);
+
+  --success: #059669;
+  --warning: #d97706;
+  --error: #dc2626;
+  --info: #6366f1;
+
+  --text-primary: #1a1225;
+  --text-secondary: #5a4d6e;
+  --text-tertiary: #8878a0;
+  --text-disabled: #b8adc8;
+
+  --border: #e2d9ef;
+  --border-hover: #cfc2e2;
+  --border-focus: #7c3aed;
+
+  --color-additions: #059669;
+  --color-deletions: #dc2626;
+
+  --glass-bg: rgba(250, 248, 252, 0.95);
+  --glass-bg-hover: var(--bg-subtle);
+  --glass-bg-elevated: #ffffff;
+  --glass-border: var(--border);
+  --glass-border-hover: rgba(124, 58, 237, 0.2);
+  --glass-shadow: rgba(0, 0, 0, 0.06);
+  --brand-glow: rgba(124, 58, 237, 0.12);
+  --brand-glow-subtle: rgba(124, 58, 237, 0.04);
+  --brand-deep: #5b21b6;
+  --brand-chat: #8b5cf6;
+  --brand-contrast: #ffffff;
+
+  --shadow-2xs: 0 1px 2px rgba(26, 18, 37, 0.04);
+  --shadow-xs: 0 1px 3px rgba(26, 18, 37, 0.06);
+  --shadow-sm: 0 1px 2px rgba(26, 18, 37, 0.06);
+  --shadow: 0 2px 6px rgba(26, 18, 37, 0.08);
+  --shadow-md: 0 4px 12px rgba(26, 18, 37, 0.08);
+  --shadow-lg: 0 8px 20px rgba(26, 18, 37, 0.1);
+  --shadow-xl: 0 16px 40px rgba(26, 18, 37, 0.12);
+  --shadow-2xl: 0 24px 56px rgba(26, 18, 37, 0.14);
+
+  --kn-claw: var(--brand);
+  --vscode-text: var(--text-primary);
+  --vscode-subtle: var(--text-tertiary);
+  --vscode-muted: var(--text-secondary);
+
+  --overlay: rgba(250, 248, 252, 0.50);
+  --logo-filter: none;
+
+  --scrollbar-thumb: #d0c4e2;
+  --scrollbar-thumb-hover: #bbb0d0;
+  --header-glass-bg: rgba(250, 248, 252, 0.95);
+  --shimmer-from: var(--bg-elevated);
+  --shimmer-via: var(--bg-subtle);
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+}
+
+/* ── VooDoo semantic tokens ───────────────────────────────────── */
+.dark[data-theme="voodoo"] {
+  --color-additions: #34d399;
+  --color-deletions: #f87171;
+}
+
+[data-theme="voodoo"]:not(.dark) {
+  --color-additions: #059669;
+  --color-deletions: #dc2626;
+}
+
+[data-theme="voodoo"]:not(.dark) .prose-chat code,
+[data-theme="voodoo"]:not(.dark) .md-preview code {
+  background: #ede6f5;
+  color: #5b21b6;
+}

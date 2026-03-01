@@ -22,6 +22,7 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: 'claymorphism', label: 'Claymorphism', color: '#b48ead', group: 'tweakcn' },
   { id: 'vercel', label: 'Vercel', color: '#ededed', group: 'tweakcn' },
   { id: 'vintage-paper', label: 'Vintage Paper', color: '#8b5e3c', group: 'tweakcn' },
+  { id: 'voodoo', label: 'VooDoo', color: '#8b5cf6', group: 'core' },
 ]
 
 interface ThemeContextValue {

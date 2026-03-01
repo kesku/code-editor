@@ -59,12 +59,12 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
     <div className="flex-1 flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-[560px]">
         {/* Heading */}
-        <h1 className="text-center text-[20px] font-semibold text-[var(--text-primary)] tracking-tight mb-5">
+        <h1 className="text-center text-[20px] font-semibold text-[var(--text-primary)] tracking-tight mb-3">
           {repoShort ? `What should we work on?` : `What do you want to build?`}
         </h1>
 
         {/* Input */}
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden mb-4 focus-within:border-[color-mix(in_srgb,var(--brand)_30%,var(--border))] transition-[border-color]">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden mb-3 focus-within:border-[color-mix(in_srgb,var(--brand)_30%,var(--border))] transition-[border-color]">
           <textarea
             ref={inputRef}
             value={input}
