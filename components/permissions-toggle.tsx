@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 
 export type PermissionLevel = 'default' | 'full'
@@ -27,7 +27,9 @@ interface Props {
 export function PermissionsToggle({ size = 'sm' }: Props) {
   const [level, setLevel] = useState<PermissionLevel>(loadPermissions)
   const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, level) } catch {}
@@ -45,13 +47,24 @@ export function PermissionsToggle({ size = 'sm' }: Props) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  const toggle = useCallback(() => {
+    setOpen(v => {
+      if (!v && buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect()
+        setMenuPos({ left: rect.left, bottom: window.innerHeight - rect.top + 4 })
+      }
+      return !v
+    })
+  }, [])
+
   const current = LEVELS.find(l => l.id === level) ?? LEVELS[0]
   const isMd = size === 'md'
 
   return (
     <div ref={containerRef} className="relative">
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={buttonRef}
+        onClick={toggle}
         className={`flex items-center rounded-lg font-medium transition-all cursor-pointer select-none ${
           level === 'full'
             ? 'text-[var(--warning,#eab308)] bg-[color-mix(in_srgb,var(--warning,#eab308)_8%,transparent)] hover:bg-[color-mix(in_srgb,var(--warning,#eab308)_12%,transparent)]'
@@ -66,12 +79,13 @@ export function PermissionsToggle({ size = 'sm' }: Props) {
         <Icon icon="lucide:chevron-down" width={isMd ? 10 : 8} height={isMd ? 10 : 8} className="opacity-50" />
       </button>
 
-      {open && (
+      {open && menuPos && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className={`absolute z-50 w-56 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-1 ${
-            isMd ? 'bottom-full mb-1.5' : 'bottom-full mb-1'
-          }`}>
+          <div className="fixed inset-0 z-[9990]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9991] w-56 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-1"
+            style={{ left: menuPos.left, bottom: menuPos.bottom }}
+          >
             {LEVELS.map(l => (
               <button
                 key={l.id}

@@ -360,8 +360,8 @@ export default function EditorLayout() {
         </div>
 
         {/* Active view with crossfade transition */}
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          <div key={activeView} className="flex-1 flex min-h-0 overflow-hidden view-enter">
+        <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
+          <div key={activeView} className="flex-1 flex min-h-0 min-w-0 w-full overflow-hidden view-enter">
             {activeView === 'chat' && <ChatView />}
             {activeView === 'editor' && <EditorView />}
             {activeView === 'preview' && <PreviewPanel />}

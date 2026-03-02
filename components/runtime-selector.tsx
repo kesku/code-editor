@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 
 export type RuntimeMode = 'local' | 'worktree' | 'cloud'
@@ -28,7 +28,9 @@ interface Props {
 export function RuntimeSelector({ size = 'sm' }: Props) {
   const [runtime, setRuntime] = useState<RuntimeMode>(loadRuntime)
   const [open, setOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, runtime) } catch {}
@@ -46,13 +48,24 @@ export function RuntimeSelector({ size = 'sm' }: Props) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
+  const toggle = useCallback(() => {
+    setOpen(v => {
+      if (!v && buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect()
+        setMenuPos({ left: rect.left, bottom: window.innerHeight - rect.top + 4 })
+      }
+      return !v
+    })
+  }, [])
+
   const current = RUNTIMES.find(r => r.id === runtime) ?? RUNTIMES[0]
   const isMd = size === 'md'
 
   return (
     <div ref={containerRef} className="relative">
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={buttonRef}
+        onClick={toggle}
         className={`flex items-center rounded-lg font-medium transition-all cursor-pointer select-none text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] hover:bg-[color-mix(in_srgb,var(--text-primary)_7%,transparent)] ${
           isMd ? 'gap-1.5 px-3 py-1.5 text-[13px]' : 'gap-1 px-2 py-1 text-[11px]'
         }`}
@@ -63,12 +76,13 @@ export function RuntimeSelector({ size = 'sm' }: Props) {
         <Icon icon="lucide:chevron-down" width={isMd ? 10 : 8} height={isMd ? 10 : 8} className="text-[var(--text-disabled)]" />
       </button>
 
-      {open && (
+      {open && menuPos && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className={`absolute z-50 w-52 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-1 ${
-            isMd ? 'bottom-full mb-1.5' : 'bottom-full mb-1'
-          }`}>
+          <div className="fixed inset-0 z-[9990]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9991] w-52 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-1"
+            style={{ left: menuPos.left, bottom: menuPos.bottom }}
+          >
             {RUNTIMES.map(r => (
               <button
                 key={r.id}

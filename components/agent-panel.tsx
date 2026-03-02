@@ -166,6 +166,8 @@ export function AgentPanel() {
   const [imageAttachments, setImageAttachments] = useState<Array<{ name: string; dataUrl: string }>>([])
   const [modelInfo, setModelInfo] = useState<{ current: string; available: string[] }>({ current: '', available: [] })
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [modelMenuPos, setModelMenuPos] = useState<{ left: number; bottom: number } | null>(null)
+  const modelBtnRef = useRef<HTMLButtonElement>(null)
   const [agentMode, setAgentMode] = useState<AgentMode>('agent')
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([])
   const [contextTokens, setContextTokens] = useState(0)
@@ -1435,17 +1437,29 @@ export function AgentPanel() {
               {modelInfo.current && (
                 <div className="relative">
                   <button
-                    onClick={() => setModelMenuOpen(v => !v)}
+                    ref={modelBtnRef}
+                    onClick={() => {
+                      setModelMenuOpen(v => {
+                        if (!v && modelBtnRef.current) {
+                          const rect = modelBtnRef.current.getBoundingClientRect()
+                          setModelMenuPos({ left: rect.left, bottom: window.innerHeight - rect.top + 4 })
+                        }
+                        return !v
+                      })
+                    }}
                     className="flex items-center gap-1 text-[10px] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
                   >
                     <Icon icon="lucide:sparkles" width={11} height={11} />
                     {modelInfo.current.replace(/^.*\//, '').replace(/(claude-|gpt-)/, '').slice(0, 12)}
                     <Icon icon="lucide:chevron-down" width={9} height={9} />
                   </button>
-                  {modelMenuOpen && (
+                  {modelMenuOpen && modelMenuPos && (
                     <>
-                      <div className="fixed inset-0 z-40" onClick={() => setModelMenuOpen(false)} />
-                      <div className="absolute bottom-full left-0 mb-1 w-52 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-1 z-50">
+                      <div className="fixed inset-0 z-[9990]" onClick={() => setModelMenuOpen(false)} />
+                      <div
+                        className="fixed z-[9991] w-52 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-xl py-1"
+                        style={{ left: modelMenuPos.left, bottom: modelMenuPos.bottom }}
+                      >
                         {modelInfo.available.slice(0, 4).map(m => (
                           <button
                             key={m}

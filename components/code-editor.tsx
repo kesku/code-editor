@@ -187,12 +187,22 @@ export function CodeEditor() {
       const workerBlobs = new Map<string, string>()
       await Promise.all(
         Object.entries(workerUrls).map(async ([key, url]) => {
-          const res = await fetch(url)
-          const text = await res.text()
-          workerBlobs.set(key, URL.createObjectURL(
-            new Blob([text], { type: 'application/javascript' })
-          ))
+          try {
+            const res = await fetch(url)
+            if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`)
+            const text = await res.text()
+            if (!text || text.length < 100) throw new Error(`Empty/truncated response for ${url}`)
+            workerBlobs.set(key, URL.createObjectURL(
+              new Blob([text], { type: 'application/javascript' })
+            ))
+          } catch (err) {
+            console.warn(`[Monaco] Failed to fetch worker "${key}":`, err)
+          }
         })
+      )
+
+      const noopWorkerUrl = URL.createObjectURL(
+        new Blob(['self.onmessage = function() {}'], { type: 'application/javascript' })
       )
 
       self.MonacoEnvironment = {
@@ -203,8 +213,20 @@ export function CodeEditor() {
             html: 'html', handlebars: 'html', razor: 'html',
             typescript: 'typescript', javascript: 'typescript',
           }
-          const blobUrl = workerBlobs.get(labelMap[label] || 'editor')!
-          return new Worker(blobUrl)
+          const key = labelMap[label] || 'editor'
+          const blobUrl = workerBlobs.get(key) ?? workerBlobs.get('editor')
+          if (!blobUrl) return new Worker(noopWorkerUrl)
+          try {
+            const w = new Worker(blobUrl)
+            w.onerror = (e) => {
+              e.preventDefault()
+              console.warn(`[Monaco] Worker "${label}" error:`, e.message)
+            }
+            return w
+          } catch (err) {
+            console.warn(`[Monaco] Worker "${label}" failed to start, using noop:`, err)
+            return new Worker(noopWorkerUrl)
+          }
         },
       }
 
