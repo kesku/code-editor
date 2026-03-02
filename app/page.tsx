@@ -309,7 +309,7 @@ export default function EditorLayout() {
         activeId={activeChatId ?? ''}
         onSelect={(id) => { setActiveChatId(id); window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id } })); setView('chat') }}
         onNew={() => { const newId = crypto.randomUUID(); setActiveChatId(newId); window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id: newId } })); setView('chat') }}
-        onDelete={(id) => { if (id === activeChatId) { const newId = crypto.randomUUID(); setActiveChatId(newId); window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id: newId } })); } }}
+        onDelete={(id) => { if (id === activeChatId) { setActiveChatId(null) } }}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(v => !v)}
         repoName={repo?.fullName || localRootPath?.split('/').pop()}

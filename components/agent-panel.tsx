@@ -240,9 +240,9 @@ export function AgentPanel() {
     })()
   }, [isConnected, sendRequest])
 
-  // ─── Session initialization (inject system prompt once) ───────
-  useEffect(() => {
-    if (!isConnected || sessionInitRef.current) return
+  // ─── Lazy session initialization (only on first message) ──────
+  const ensureSessionInit = useCallback(async () => {
+    if (sessionInitRef.current) return
 
     const initKey = `${SESSION_INIT_STORAGE_KEY}:${sessionKey}:v${CODE_EDITOR_SYSTEM_PROMPT_VERSION}`
     const alreadyInit = typeof window !== 'undefined' && sessionStorage.getItem(initKey)
@@ -251,26 +251,25 @@ export function AgentPanel() {
       return
     }
 
-    // Inject system prompt
-    sendRequest('chat.inject', {
-      sessionKey,
-      message: CODE_EDITOR_SYSTEM_PROMPT,
-      label: 'Knot Code system prompt',
-    }).then(() => {
+    try {
+      await sendRequest('chat.inject', {
+        sessionKey,
+        message: CODE_EDITOR_SYSTEM_PROMPT,
+        label: 'Knot Code system prompt',
+      })
       sessionInitRef.current = true
       if (typeof window !== 'undefined') {
         sessionStorage.setItem(initKey, 'true')
       }
-    }).catch(() => {
+      // Label the session only after init succeeds
+      sendRequest('sessions.patch', {
+        key: sessionKey,
+        label: `Knot Code — ${chatId.slice(0, 8)}`,
+      }).catch(() => {})
+    } catch {
       // Non-fatal — session still works without explicit system prompt
-    })
-
-    // Label the session
-    sendRequest('sessions.patch', {
-      key: sessionKey,
-      label: `Knot Code — ${chatId.slice(0, 8)}`,
-    }).catch(() => { /* non-fatal */ })
-  }, [isConnected, sendRequest, sessionKey])
+    }
+  }, [sendRequest, sessionKey, chatId])
 
   // ─── Listen for chat events (streaming replies) ───────────────
   useEffect(() => {
@@ -714,6 +713,9 @@ export function AgentPanel() {
 
     setSending(true)
 
+    // Ensure session is initialized before first message
+    await ensureSessionInit()
+
     // Build visual label for attachments
     const attachLabels: string[] = []
     for (const att of contextAttachments) {
@@ -804,7 +806,7 @@ export function AgentPanel() {
       setIsStreaming(false)
       setSending(false)
     }
-  }, [input, sending, isConnected, sendRequest, buildContext, appendMessage])
+  }, [input, sending, isConnected, sendRequest, buildContext, appendMessage, ensureSessionInit])
 
   // ─── Handle ⌘K inline edit requests ────────────────────────────
   useEffect(() => {

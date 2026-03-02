@@ -19,6 +19,56 @@ interface TerminalPanelProps {
   onHeightChange: (h: number) => void
 }
 
+// Common file extensions used to identify file paths in terminal output
+const FILE_EXT_PATTERN = '(?:tsx?|jsx?|mjs|cjs|json|md|mdx|css|scss|html|xml|yaml|yml|py|rs|go|rb|sh|bash|zsh|sql|graphql|toml|lock|txt|cfg|ini|env|svg|vue|svelte|astro|prisma|mdc)'
+
+// Matches patterns like:
+//   ./path/to/file.ts
+//   path/to/file.ts:42
+//   path/to/file.ts:42:10
+//   /absolute/path/file.ts
+//   ./src/components/Foo.tsx(10,5)   (TS-style)
+const FILE_PATH_REGEX = new RegExp(
+  `(?:^|\\s|\\(|'|"|=)` +                  // preceded by whitespace, quote, paren, etc.
+  `(` +                                      // capture group 1: full path with line/col
+    `\\.{0,2}/[\\w./@-]+\\.${FILE_EXT_PATTERN}` +  // relative or absolute path
+    `(?::(\\d+)(?::(\\d+))?)?` +             // optional :line and :col
+    `|` +
+    `[\\w./@-]+\\.${FILE_EXT_PATTERN}` +     // bare file (no leading ./)
+    `(?::(\\d+)(?::(\\d+))?)?` +             // optional :line and :col
+  `)`,
+  'g'
+)
+
+function findFileLinksInLine(lineText: string): Array<{ text: string; startCol: number; endCol: number; line?: number; col?: number }> {
+  const results: Array<{ text: string; startCol: number; endCol: number; line?: number; col?: number }> = []
+  const regex = new RegExp(FILE_PATH_REGEX.source, FILE_PATH_REGEX.flags)
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(lineText)) !== null) {
+    const fullMatch = match[1]
+    if (!fullMatch) continue
+    // Extract just the file path (without :line:col)
+    const pathOnly = fullMatch.replace(/:\d+(?::\d+)?$/, '')
+    // Skip things that look like URLs (http://, https://, etc.)
+    if (/^https?:\/\//i.test(pathOnly)) continue
+    // Skip if it looks like a version number (e.g. 1.2.3)
+    if (/^\d+\.\d+\.\d+/.test(pathOnly)) continue
+
+    const lineNum = match[2] ? parseInt(match[2], 10) : (match[4] ? parseInt(match[4], 10) : undefined)
+    const colNum = match[3] ? parseInt(match[3], 10) : (match[5] ? parseInt(match[5], 10) : undefined)
+
+    const startIndex = match.index + match[0].indexOf(fullMatch)
+    results.push({
+      text: fullMatch,
+      startCol: startIndex,
+      endCol: startIndex + fullMatch.length,
+      line: lineNum,
+      col: colNum,
+    })
+  }
+  return results
+}
+
 function buildXtermTheme() {
   const s = getComputedStyle(document.documentElement)
   const v = (name: string) => s.getPropertyValue(name).trim()
@@ -59,6 +109,7 @@ interface TerminalPaneProps {
   onSplit: () => void
   onClose?: () => void
   cwd?: string | null
+  onFileOpen?: (path: string, line?: number, col?: number) => void
 }
 
 function TerminalPane({
@@ -70,6 +121,7 @@ function TerminalPane({
   onSplit,
   onClose,
   cwd,
+  onFileOpen,
 }: TerminalPaneProps) {
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTab, setActiveTab] = useState<number | null>(null)
@@ -79,9 +131,11 @@ function TerminalPane({
   const fitRef = useRef<any>(null)
   const activeTabRef = useRef<number | null>(null)
   const tabsRef = useRef<TerminalTab[]>([])
+  const onFileOpenRef = useRef(onFileOpen)
 
   useEffect(() => { activeTabRef.current = activeTab }, [activeTab])
   useEffect(() => { tabsRef.current = tabs }, [tabs])
+  useEffect(() => { onFileOpenRef.current = onFileOpen }, [onFileOpen])
 
   // Kill all PTY sessions and dispose xterm on unmount
   useEffect(() => {
@@ -146,6 +200,32 @@ function TerminalPane({
         if (activeTabRef.current != null) {
           await tauriInvoke('write_terminal', { id: activeTabRef.current, data })
         }
+      })
+
+      // Register file path link provider for Cmd+Click / Ctrl+Click navigation
+      term.registerLinkProvider({
+        provideLinks(bufferLineNumber: number, callback: (links: any[] | undefined) => void) {
+          const line = term.buffer.active.getLine(bufferLineNumber - 1)
+          if (!line) { callback(undefined); return }
+          const lineText = line.translateToString(true)
+          const found = findFileLinksInLine(lineText)
+          if (found.length === 0) { callback(undefined); return }
+
+          const links = found.map(f => ({
+            range: {
+              start: { x: f.startCol + 1, y: bufferLineNumber },
+              end: { x: f.endCol + 1, y: bufferLineNumber },
+            },
+            text: f.text,
+            decorations: { pointerCursor: true, underline: true },
+            activate(event: MouseEvent, text: string) {
+              if (!event.metaKey && !event.ctrlKey) return
+              const pathOnly = text.replace(/:\d+(?::\d+)?$/, '')
+              onFileOpenRef.current?.(pathOnly, f.line, f.col)
+            },
+          }))
+          callback(links)
+        },
       })
     })()
     return () => { cancelled = true }
@@ -333,6 +413,15 @@ export function TerminalPanel({ visible, height, onHeightChange }: TerminalPanel
 
   useEffect(() => { setIsDesktop(isTauri()) }, [])
 
+  const handleFileOpen = useCallback((path: string, line?: number) => {
+    window.dispatchEvent(new CustomEvent('file-select', { detail: { path } }))
+    if (line != null) {
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('editor-navigate', { detail: { startLine: line } }))
+      }, 200)
+    }
+  }, [])
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     resizing.current = true
@@ -378,6 +467,7 @@ export function TerminalPanel({ visible, height, onHeightChange }: TerminalPanel
           showSplitButton={!splitEnabled}
           onSplit={() => setSplitEnabled(true)}
           cwd={local.localMode ? local.rootPath : null}
+          onFileOpen={handleFileOpen}
         />
 
         {splitEnabled && (
@@ -392,6 +482,7 @@ export function TerminalPanel({ visible, height, onHeightChange }: TerminalPanel
               onSplit={() => {}}
               onClose={() => setSplitEnabled(false)}
               cwd={local.localMode ? local.rootPath : null}
+              onFileOpen={handleFileOpen}
             />
           </>
         )}
