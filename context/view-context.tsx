@@ -4,6 +4,8 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 
 export type ViewId = 'chat' | 'editor' | 'preview' | 'workflows' | 'grid' | 'diff' | 'git' | 'prs' | 'settings'
 
+const VIEW_ORDER: ViewId[] = ['editor', 'preview', 'workflows', 'grid', 'git', 'prs', 'settings']
+
 interface ViewState {
   activeView: ViewId
   previousView: ViewId | null
@@ -23,7 +25,9 @@ export function ViewProvider({ children }: { children: ReactNode }) {
   const setView = useCallback((view: ViewId) => {
     setActiveView(prev => {
       setPreviousView(prev)
-      setDirection('forward')
+      const prevIdx = VIEW_ORDER.indexOf(prev)
+      const nextIdx = VIEW_ORDER.indexOf(view)
+      setDirection(nextIdx >= prevIdx ? 'forward' : 'back')
       return view
     })
   }, [])

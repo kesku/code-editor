@@ -117,10 +117,9 @@ export function PreviewPanel() {
 
   useEffect(() => { if (previewUrl) setLoading(true) }, [refreshKey, previewUrl])
 
-  if (pip) return <PipWindow />
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => { if (!visible) setVisible(true) }, [visible, setVisible])
+
+  if (pip) return <PipWindow />
 
   const devScripts = scripts.filter(s => s.category === 'dev')
   const buildScripts = scripts.filter(s => s.category === 'build')

@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef, useLayoutEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '@iconify/react'
 import { useGateway } from '@/context/gateway-context'
 import { useRepo } from '@/context/repo-context'
 import { useEditor } from '@/context/editor-context'
 import { useLocal } from '@/context/local-context'
 import { useView, type ViewId } from '@/context/view-context'
+import { useLayout } from '@/context/layout-context'
 import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { isTauri } from '@/lib/tauri'
 import { fetchFileContentsByName as fetchFileContents, commitFilesByName as commitFiles } from '@/lib/github-api'
@@ -50,6 +52,78 @@ const VIEW_ICONS: Record<string, { icon: string; label: string }> = {
 
 const VISIBLE_VIEWS: ViewId[] = ['editor', 'preview', 'workflows', 'grid', 'git', 'prs']
 
+const TERMINAL_SPRING = { type: 'spring' as const, stiffness: 500, damping: 35 }
+
+// ─── Spatial view transition variants ────────────────
+const viewVariants = {
+  enter: (dir: 'forward' | 'back') => ({
+    x: dir === 'forward' ? 60 : -60,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: { type: 'spring' as const, stiffness: 500, damping: 35 },
+  },
+  exit: (dir: 'forward' | 'back') => ({
+    x: dir === 'forward' ? -60 : 60,
+    opacity: 0,
+    transition: { duration: 0.15 },
+  }),
+}
+
+// ─── Activity Pulse Ring ─────────────────────────────
+function ActivityPulseRing({ status, agentActive }: { status: string; agentActive: boolean }) {
+  const isConnected = status === 'connected'
+  const isConnecting = status === 'connecting' || status === 'authenticating'
+
+  const ringColor = agentActive && isConnected
+    ? 'var(--brand)'
+    : isConnected
+      ? 'var(--color-additions, #22c55e)'
+      : isConnecting
+        ? 'var(--warning, #eab308)'
+        : 'var(--text-disabled)'
+
+  const statusTitle = isConnected
+    ? (agentActive ? 'Agent working' : 'Connected')
+    : isConnecting ? 'Connecting...' : 'Disconnected'
+
+  return (
+    <span className="relative w-4 h-4 flex items-center justify-center" title={statusTitle}>
+      <motion.svg
+        className="absolute inset-0 w-4 h-4"
+        viewBox="0 0 16 16"
+        animate={
+          isConnecting
+            ? { rotate: 360 }
+            : isConnected
+              ? { scale: [1, agentActive ? 1.25 : 1.12, 1], opacity: [0.5, 1, 0.5] }
+              : { opacity: 0.4, scale: 1 }
+        }
+        transition={
+          isConnecting
+            ? { repeat: Infinity, duration: 2, ease: 'linear' }
+            : isConnected
+              ? { repeat: Infinity, duration: agentActive ? 1.2 : 3, ease: 'easeInOut' }
+              : { duration: 0.3 }
+        }
+      >
+        <circle
+          cx="8" cy="8" r="6" fill="none"
+          stroke={ringColor} strokeWidth="1.5"
+          strokeDasharray={isConnecting ? '3 3' : undefined}
+          strokeLinecap="round"
+        />
+      </motion.svg>
+      <span
+        className="w-1.5 h-1.5 rounded-full"
+        style={{ backgroundColor: ringColor }}
+      />
+    </span>
+  )
+}
+
 function SidebarPluginSlot() {
   const { slots } = usePlugins()
   const entries = slots.sidebar
@@ -89,10 +163,13 @@ export default function EditorLayout() {
   const local = useLocal()
   const { files, activeFile, openFile, setActiveFile, markClean, updateFileContent } = useEditor()
   const { localMode, readFile: localReadFile, writeFile: localWriteFile, rootPath: localRootPath, gitInfo, openFolder: localOpenFolder, setRootPath: localSetRootPath, commitFiles: localCommitFiles } = local
-  const { activeView, setView } = useView()
+  const { activeView, setView, direction } = useView()
+  const layout = useLayout()
+  const sidebarCollapsed = !layout.isVisible('sidebar')
+  const terminalVisible = layout.isVisible('terminal')
+  const terminalHeight = layout.getSize('terminal')
 
-  // ─── Minimal state ──────────────────────────────────────
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // ─── Minimal state ──────────────────────────────────
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [isTauriDesktop, setIsTauriDesktop] = useState(false)
   const [isMacTauri, setIsMacTauri] = useState(false)
@@ -104,23 +181,8 @@ export default function EditorLayout() {
   const tabContainerRef = useRef<HTMLDivElement>(null)
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
-  // Terminal — persisted so tabs survive across page reloads and view switches
-  const [terminalVisible, setTerminalVisible] = useState(false)
-  const [terminalHeight, setTerminalHeight] = useState(240)
-
-  // Hydrate persisted state from localStorage after mount to avoid SSR mismatch
-  useEffect(() => {
-    try {
-      if (localStorage.getItem('code-editor:sidebar-collapsed') === 'true') setSidebarCollapsed(true)
-    } catch {}
-    try {
-      if (localStorage.getItem('code-editor:terminal-visible') === 'true') setTerminalVisible(true)
-    } catch {}
-    try {
-      const h = parseInt(localStorage.getItem('code-editor:terminal-height') || '')
-      if (h >= 120 && h <= 600) setTerminalHeight(h)
-    } catch {}
-  }, [])
+  // Agent activity state for pulse ring
+  const [agentActive, setAgentActive] = useState(false)
 
   // Overlay modals
   const [quickOpenVisible, setQuickOpenVisible] = useState(false)
@@ -147,18 +209,7 @@ export default function EditorLayout() {
     }
   }, [local.remoteRepo, local.gitInfo?.branch]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Persist sidebar state ─────────────────────────────
-  useEffect(() => {
-    try { localStorage.setItem('code-editor:sidebar-collapsed', String(sidebarCollapsed)) } catch {}
-  }, [sidebarCollapsed])
-
-  // Persist terminal state
-  useEffect(() => {
-    try { localStorage.setItem('code-editor:terminal-visible', String(terminalVisible)) } catch {}
-  }, [terminalVisible])
-  useEffect(() => {
-    try { localStorage.setItem('code-editor:terminal-height', String(terminalHeight)) } catch {}
-  }, [terminalHeight])
+  // Layout persistence is handled by LayoutContext
 
   // ─── Sliding tab indicator measurement ─────────────────
   useLayoutEffect(() => {
@@ -183,6 +234,15 @@ export default function EditorLayout() {
     }
   }, [status])
 
+  // ─── Agent activity detection ─────────────────────────
+  useEffect(() => {
+    const onEngine = (e: Event) => {
+      setAgentActive((e as CustomEvent).detail?.running ?? false)
+    }
+    window.addEventListener('engine-status', onEngine)
+    return () => window.removeEventListener('engine-status', onEngine)
+  }, [])
+
   const activeViewRef = useRef(activeView)
   activeViewRef.current = activeView
 
@@ -198,9 +258,9 @@ export default function EditorLayout() {
       // ⌘⇧F — Global search
       if (meta && e.shiftKey && e.key === 'f') { e.preventDefault(); setGlobalSearchVisible(v => !v) }
       // ⌘\\ — Toggle sidebar
-      if (meta && e.key === '\\') { e.preventDefault(); setSidebarCollapsed(v => !v) }
+      if (meta && e.key === '\\') { e.preventDefault(); layout.toggle('sidebar') }
       // ⌘J / ⌘` — Toggle terminal
-      if (meta && (e.key === 'j' || e.key === '`') && !e.shiftKey) { e.preventDefault(); setTerminalVisible(v => !v) }
+      if (meta && (e.key === 'j' || e.key === '`') && !e.shiftKey) { e.preventDefault(); layout.toggle('terminal') }
       // ⌘L — Open side chat panel and focus input
       if (meta && e.key === 'l' && !e.shiftKey) { e.preventDefault(); if (activeViewRef.current !== 'editor') setView('editor'); window.dispatchEvent(new CustomEvent('open-side-chat')); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-agent-input'))) }
       // Esc — Close overlays
@@ -230,16 +290,14 @@ export default function EditorLayout() {
       const path = (e as CustomEvent).detail?.path
       if (path) localSetRootPath(path)
     }
-    const toggleTerminal = () => setTerminalVisible(v => !v)
+    // toggle-terminal is now handled by LayoutContext's event bridge
     window.addEventListener('open-settings', openSettings)
     window.addEventListener('open-folder', openFolder)
     window.addEventListener('open-recent', openRecent)
-    window.addEventListener('toggle-terminal', toggleTerminal)
     return () => {
       window.removeEventListener('open-settings', openSettings)
       window.removeEventListener('open-folder', openFolder)
       window.removeEventListener('open-recent', openRecent)
-      window.removeEventListener('toggle-terminal', toggleTerminal)
     }
   }, [localOpenFolder, localSetRootPath])
 
@@ -435,48 +493,53 @@ export default function EditorLayout() {
       {/* Workspace Sidebar */}
       <WorkspaceSidebar
         activeId={activeChatId ?? ''}
-        onSelect={(id) => { setActiveChatId(id); window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id } })); setView('editor'); window.dispatchEvent(new CustomEvent('open-side-chat')) }}
-        onNew={() => { const newId = crypto.randomUUID(); setActiveChatId(newId); window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id: newId } })); setView('editor'); window.dispatchEvent(new CustomEvent('open-side-chat')) }}
+        onSelect={(id) => { setActiveChatId(id); (window as any).__pendingSwitchChat = id; setView('editor'); layout.show('chat'); setTimeout(() => window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id } })), 80) }}
+        onNew={() => { const newId = crypto.randomUUID(); setActiveChatId(newId); (window as any).__pendingSwitchChat = newId; setView('editor'); layout.show('chat'); setTimeout(() => window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id: newId } })), 80) }}
         onDelete={(id) => { if (id === activeChatId) { setActiveChatId(null) } }}
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(v => !v)}
+        onToggle={() => layout.toggle('sidebar')}
         repoName={repo?.fullName || localRootPath?.split('/').pop()}
       />
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 rounded-xl overflow-hidden border border-[var(--border)]">
-        {/* View navigation bar */}
-        <div data-tauri-drag-region className={`flex items-center h-10 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 px-2.5 gap-1 tauri-drag-region ${isMacTauri && sidebarCollapsed ? 'pl-20' : ''}`}>
-          {/* View tabs with sliding indicator */}
-          <div ref={tabContainerRef} className="relative flex items-center gap-1 tauri-no-drag">
-            <span
-              className="absolute top-1/2 -translate-y-1/2 h-[28px] rounded-md bg-[var(--bg-subtle)] transition-all duration-300 pointer-events-none"
-              style={{
-                left: indicatorStyle.left,
-                width: indicatorStyle.width,
-                transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-                opacity: indicatorStyle.width > 0 ? 1 : 0,
+        {/* View navigation bar — folder tabs */}
+        <div data-tauri-drag-region className={`flex items-center h-11 bg-[var(--bg-elevated)] shrink-0 px-2.5 gap-1 tauri-drag-region ${isMacTauri && sidebarCollapsed ? 'pl-20' : ''}`}>
+          {/* Folder-style tab strip */}
+          <div ref={tabContainerRef} className="folder-tab-strip tauri-no-drag">
+            {VISIBLE_VIEWS.map((v, i) => {
+              const isActive = activeView === v
+              return (
+                <motion.button
+                  key={v}
+                  ref={el => { tabRefs.current[i] = el }}
+                  onClick={() => setView(v)}
+                  className={`folder-tab ${isActive ? 'folder-tab--active' : ''} ${flashedTab === v ? 'folder-tab--flash' : ''}`}
+                  style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-disabled)' }}
+                  title={`${VIEW_ICONS[v].label} (\u2318${i + 1})`}
+                  whileTap={{ scale: 0.95 }}
+                  layout
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Icon icon={VIEW_ICONS[v].icon} width={15} height={15} className="folder-tab__icon" />
+                    <span className="hidden sm:inline">{VIEW_ICONS[v].label}</span>
+                    {v === 'git' && dirtyCount > 0 && (
+                      <span className="px-1 min-w-[16px] text-center rounded-full bg-[var(--brand)] text-[var(--brand-contrast)] text-[9px] leading-[16px] animate-badge-pop">{dirtyCount}</span>
+                    )}
+                  </span>
+                </motion.button>
+              )
+            })}
+            {/* Sliding accent under active tab */}
+            <motion.span
+              className="folder-tab-strip__slider"
+              animate={{
+                left: indicatorStyle.left + 6,
+                width: Math.max(0, indicatorStyle.width - 12),
               }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              style={{ opacity: indicatorStyle.width > 0 ? 1 : 0 }}
             />
-            {VISIBLE_VIEWS.map((v, i) => (
-              <button
-                key={v}
-                ref={el => { tabRefs.current[i] = el }}
-                onClick={() => setView(v)}
-                className={`relative z-[1] flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors duration-200 cursor-pointer ${
-                  activeView === v
-                    ? 'text-[var(--text-primary)]'
-                    : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'
-                } ${flashedTab === v ? 'ring-1 ring-[var(--brand)] ring-opacity-60' : ''}`}
-                title={`${VIEW_ICONS[v].label} (⌘${i + 1})`}
-              >
-                <Icon icon={VIEW_ICONS[v].icon} width={16} height={16} />
-                <span className="hidden sm:inline">{VIEW_ICONS[v].label}</span>
-                {v === 'git' && dirtyCount > 0 && (
-                  <span className="px-1 min-w-[16px] text-center rounded-full bg-[var(--brand)] text-[var(--brand-contrast)] text-[9px] leading-[16px] animate-badge-pop">{dirtyCount}</span>
-                )}
-              </button>
-            ))}
           </div>
 
           <div className="flex-1 tauri-drag-region" data-tauri-drag-region />
@@ -487,43 +550,59 @@ export default function EditorLayout() {
           </button>
         </div>
 
-        {/* Active view with crossfade transition */}
+        {/* Active view with spatial slide transition */}
         <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
-          <div key={activeView} className="flex-1 flex min-h-0 min-w-0 w-full overflow-hidden view-enter">
-            <ErrorBoundary key={activeView} fallbackLabel={`${VIEW_ICONS[activeView]?.label ?? activeView} failed to render`}>
-              {activeView === 'editor' && <EditorView />}
-              {activeView === 'preview' && <PreviewPanel />}
-              {activeView === 'workflows' && <WorkflowView />}
-              {activeView === 'grid' && <GridView />}
-              {activeView === 'git' && <GitView />}
-              {activeView === 'prs' && <PrView />}
-              {activeView === 'settings' && (
-                <div className="flex-1 flex items-center justify-center">
-                  <SettingsPanel open={true} onClose={() => setView('editor')} />
-                </div>
-              )}
-            </ErrorBoundary>
-          </div>
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={activeView}
+              custom={direction}
+              variants={viewVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="flex-1 flex min-h-0 min-w-0 w-full overflow-hidden"
+            >
+              <ErrorBoundary key={activeView} fallbackLabel={`${VIEW_ICONS[activeView]?.label ?? activeView} failed to render`}>
+                {activeView === 'editor' && <EditorView />}
+                {activeView === 'preview' && <PreviewPanel />}
+                {activeView === 'workflows' && <WorkflowView />}
+                {activeView === 'grid' && <GridView />}
+                {activeView === 'git' && <GitView />}
+                {activeView === 'prs' && <PrView />}
+                {activeView === 'settings' && (
+                  <div className="flex-1 flex items-center justify-center">
+                    <SettingsPanel open={true} onClose={() => setView('editor')} />
+                  </div>
+                )}
+              </ErrorBoundary>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        {/* Terminal — persists across toggles so PTY sessions survive */}
-        <div className={terminalVisible ? '' : 'hidden'}>
+        {/* Terminal — spring-animated height, persists so PTY sessions survive */}
+        <motion.div
+          initial={false}
+          animate={{ height: terminalVisible ? terminalHeight + 3 : 0 }}
+          transition={TERMINAL_SPRING}
+          style={{ overflow: 'hidden' }}
+          className="shrink-0"
+        >
           <div
             className="h-[3px] cursor-row-resize hover:bg-[var(--brand)] transition-colors opacity-0 hover:opacity-50 shrink-0"
             onMouseDown={e => {
               e.preventDefault()
               const startY = e.clientY
               const startH = terminalHeight
-              const onMove = (ev: MouseEvent) => setTerminalHeight(Math.max(100, Math.min(500, startH - (ev.clientY - startY))))
+              const onMove = (ev: MouseEvent) => layout.resize('terminal', startH - (ev.clientY - startY))
               const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
               document.addEventListener('mousemove', onMove)
               document.addEventListener('mouseup', onUp)
             }}
           />
           <div className="shrink-0 border-t border-[var(--border)]" style={{ height: terminalHeight }}>
-            <TerminalPanel visible={terminalVisible} height={terminalHeight} onHeightChange={setTerminalHeight} />
+            <TerminalPanel visible={terminalVisible} height={terminalHeight} onHeightChange={(h: number) => layout.resize('terminal', h)} />
           </div>
-        </div>
+        </motion.div>
 
         {/* Status bar */}
         <footer className="flex items-center justify-between px-3 h-[22px] border-t border-[var(--border)] bg-[var(--bg-elevated)] text-[10px] text-[var(--text-tertiary)] shrink-0">
@@ -540,16 +619,7 @@ export default function EditorLayout() {
           <div className="flex items-center gap-3">
             <PluginSlotRenderer slot="status-bar-right" />
             <span className="text-[var(--text-disabled)] font-medium">Knot Code</span>
-            <span
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                status === 'connected'
-                  ? `bg-[var(--color-additions)] ${connectionAnim === 'pop' ? 'animate-badge-pop animate-glow-pulse' : 'animate-orbit-dot'}`
-                  : status === 'connecting' || status === 'authenticating'
-                    ? 'bg-[var(--warning,#eab308)] animate-pulse'
-                    : 'bg-[var(--text-disabled)] scale-75 opacity-60'
-              }`}
-              title={status === 'connected' ? 'Connected' : status === 'connecting' ? 'Connecting...' : 'Disconnected'}
-            />
+            <ActivityPulseRing status={status} agentActive={agentActive} />
           </div>
         </footer>
       </div>
@@ -580,23 +650,36 @@ export default function EditorLayout() {
         onRun={(cmdId) => {
           setCommandPaletteVisible(false)
           switch (cmdId) {
-            // Layout toggles
-            case 'toggle-files': window.dispatchEvent(new CustomEvent('cmd:toggle-files')); break
-            case 'toggle-terminal': window.dispatchEvent(new CustomEvent('toggle-terminal')); break
-            case 'toggle-engine': window.dispatchEvent(new CustomEvent('cmd:toggle-engine')); break
-            case 'toggle-chat': window.dispatchEvent(new CustomEvent('cmd:toggle-chat')); break
-            case 'collapse-editor': window.dispatchEvent(new CustomEvent('cmd:collapse-editor')); break
+            // Layout toggles — direct via layout context
+            case 'toggle-files': layout.toggle('tree'); break
+            case 'toggle-terminal': layout.toggle('terminal'); break
+            case 'toggle-engine': layout.toggle('engine'); break
+            case 'toggle-chat': layout.toggle('chat'); break
+            case 'collapse-editor': layout.setEditorCollapsed(true); break
             // Layout presets
-            case 'layout-focus': window.dispatchEvent(new CustomEvent('cmd:layout-preset', { detail: 'focus' })); break
-            case 'layout-review': window.dispatchEvent(new CustomEvent('cmd:layout-preset', { detail: 'review' })); break
-            case 'layout-build': window.dispatchEvent(new CustomEvent('cmd:layout-preset', { detail: 'build' })); break
+            case 'layout-focus': layout.preset('focus'); break
+            case 'layout-review': layout.preset('review'); break
+            case 'layout-build': layout.preset('build'); break
             // Navigation
             case 'view-editor': setView('editor'); break
+            case 'view-preview': setView('preview'); break
+            case 'view-workflows': setView('workflows'); break
+            case 'view-grid': setView('grid'); break
             case 'view-git': setView('git'); break
             case 'view-prs': setView('prs'); break
             case 'view-settings': setView('settings'); break
             // File operations
             case 'find-files': setQuickOpenVisible(true); break
+            case 'save-file': if (activeFile) saveFile(activeFile); break
+            // Git operations
+            case 'git-commit': setView('git'); break
+            case 'git-push': window.dispatchEvent(new CustomEvent('agent-push')); break
+            case 'git-pull': setView('git'); break
+            case 'git-stash': setView('git'); break
+            // PR operations
+            case 'pr-create': window.dispatchEvent(new CustomEvent('open-pr-create')); break
+            // Preview operations
+            case 'preview-refresh': window.dispatchEvent(new CustomEvent('preview-refresh')); break
           }
         }}
       />

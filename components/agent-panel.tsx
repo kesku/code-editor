@@ -651,30 +651,44 @@ export function AgentPanel() {
     }
   }, [messages, chatId])
 
+  // Switch to a different chat session by id
+  const switchToChat = useCallback((newId: string) => {
+    if (newId === chatId) return
+    try { localStorage.setItem('code-editor:chat:' + chatId, JSON.stringify(messages.slice(-50))) } catch {}
+    setChatId(newId)
+    try {
+      const saved = localStorage.getItem('code-editor:chat:' + newId)
+      setMessages(saved ? JSON.parse(saved) : [])
+    } catch { setMessages([]) }
+    setStreamBuffer('')
+    sessionInitRef.current = false
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(`${SESSION_INIT_STORAGE_KEY}:${CODE_EDITOR_SESSION_KEY}:${newId.slice(0, 8)}:v${CODE_EDITOR_SYSTEM_PROMPT_VERSION}`)
+    }
+  }, [chatId, messages])
+
+  // On mount, pick up any pending chat switch (panel may have been unmounted when event fired)
+  useEffect(() => {
+    const pending = (window as any).__pendingSwitchChat as string | undefined
+    if (pending && pending !== chatId) {
+      switchToChat(pending)
+    }
+    ;(window as any).__pendingSwitchChat = undefined
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Listen for chat switch from workspace sidebar
   useEffect(() => {
     const handler = (e: Event) => {
       const newId = (e as CustomEvent).detail?.id
-      if (newId && newId !== chatId) {
-        // Save current messages
-        try { localStorage.setItem('code-editor:chat:' + chatId, JSON.stringify(messages.slice(-50))) } catch {}
-        // Load new chat
-        setChatId(newId)
-        try {
-          const saved = localStorage.getItem('code-editor:chat:' + newId)
-          setMessages(saved ? JSON.parse(saved) : [])
-        } catch { setMessages([]) }
-        setStreamBuffer('')
-        // Reset init flag so system prompt gets injected for new session
-        sessionInitRef.current = false
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem(`${SESSION_INIT_STORAGE_KEY}:${CODE_EDITOR_SESSION_KEY}:${newId.slice(0, 8)}:v${CODE_EDITOR_SYSTEM_PROMPT_VERSION}`)
-        }
+      if (newId) {
+        ;(window as any).__pendingSwitchChat = undefined
+        switchToChat(newId)
       }
     }
     window.addEventListener('switch-chat', handler)
     return () => window.removeEventListener('switch-chat', handler)
-  }, [chatId, messages])
+  }, [switchToChat])
 
   const appendMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => {

@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from '@iconify/react'
 import { cn } from '@/lib/utils'
+import { useView, type ViewId } from '@/context/view-context'
 
 type CommandId =
   | 'find-files'
+  | 'save-file'
   | 'format-document'
   | 'find-in-file'
   | 'replace-in-file'
@@ -24,9 +26,21 @@ type CommandId =
   | 'layout-build'
   // Navigation
   | 'view-editor'
+  | 'view-preview'
+  | 'view-workflows'
+  | 'view-grid'
   | 'view-git'
   | 'view-prs'
   | 'view-settings'
+  // Git operations
+  | 'git-commit'
+  | 'git-push'
+  | 'git-pull'
+  | 'git-stash'
+  // PR operations
+  | 'pr-create'
+  // Preview operations
+  | 'preview-refresh'
 
 interface CommandPaletteProps {
   open: boolean
@@ -41,46 +55,100 @@ interface CommandItem {
   keywords: string[]
   icon: string
   shortcut?: string
-  group: 'search' | 'layout' | 'preset' | 'navigate'
+  group: 'search' | 'layout' | 'preset' | 'navigate' | 'git' | 'pr' | 'preview'
 }
 
 const COMMANDS: CommandItem[] = [
-  // Search
-  { id: 'find-files', label: 'Find files', hint: 'Open quick file search', keywords: ['file', 'quick', 'open'], icon: 'lucide:file-search', shortcut: '⌘P', group: 'search' },
+  // Search / Editor
+  { id: 'find-files', label: 'Find files', hint: 'Open quick file search', keywords: ['file', 'quick', 'open'], icon: 'lucide:file-search', shortcut: '\u2318P', group: 'search' },
+  { id: 'save-file', label: 'Save file', hint: 'Save the active file', keywords: ['save', 'write', 'file'], icon: 'lucide:save', shortcut: '\u2318S', group: 'search' },
   { id: 'format-document', label: 'Format document', hint: 'Run formatter in active editor', keywords: ['format', 'prettier', 'beautify'], icon: 'lucide:wand-2', group: 'search' },
-  { id: 'find-in-file', label: 'Find in file', hint: 'Open editor search', keywords: ['find', 'search', 'match'], icon: 'lucide:search', shortcut: '⌘F', group: 'search' },
-  { id: 'replace-in-file', label: 'Search and replace', hint: 'Open replace widget', keywords: ['replace', 'search', 'find'], icon: 'lucide:replace', shortcut: '⌘H', group: 'search' },
+  { id: 'find-in-file', label: 'Find in file', hint: 'Open editor search', keywords: ['find', 'search', 'match'], icon: 'lucide:search', shortcut: '\u2318F', group: 'search' },
+  { id: 'replace-in-file', label: 'Search and replace', hint: 'Open replace widget', keywords: ['replace', 'search', 'find'], icon: 'lucide:replace', shortcut: '\u2318H', group: 'search' },
   { id: 'toggle-case-sensitive', label: 'Toggle case matching', hint: 'Enable/disable case sensitive search', keywords: ['case', 'sensitive', 'match'], icon: 'lucide:case-sensitive', group: 'search' },
   { id: 'toggle-whole-word', label: 'Toggle whole word', hint: 'Match whole words only', keywords: ['whole', 'word', 'search'], icon: 'lucide:whole-word', group: 'search' },
   { id: 'toggle-regex', label: 'Toggle regex mode', hint: 'Use regular expression search', keywords: ['regex', 'pattern', 'search'], icon: 'lucide:regex', group: 'search' },
 
   // Layout toggles
-  { id: 'toggle-files', label: 'Toggle file explorer', hint: 'Show or hide the file tree', keywords: ['files', 'tree', 'explorer', 'sidebar'], icon: 'lucide:folder', shortcut: '⌘B', group: 'layout' },
-  { id: 'toggle-terminal', label: 'Toggle terminal', hint: 'Show or hide the terminal panel', keywords: ['terminal', 'shell', 'console'], icon: 'lucide:terminal', shortcut: '⌘J', group: 'layout' },
+  { id: 'toggle-files', label: 'Toggle file explorer', hint: 'Show or hide the file tree', keywords: ['files', 'tree', 'explorer', 'sidebar'], icon: 'lucide:folder', shortcut: '\u2318B', group: 'layout' },
+  { id: 'toggle-terminal', label: 'Toggle terminal', hint: 'Show or hide the terminal panel', keywords: ['terminal', 'shell', 'console'], icon: 'lucide:terminal', shortcut: '\u2318J', group: 'layout' },
   { id: 'toggle-engine', label: 'Toggle engine panel', hint: 'Show or hide the engine output', keywords: ['engine', 'output', 'build', 'logs'], icon: 'lucide:cpu', group: 'layout' },
-  { id: 'toggle-chat', label: 'Toggle agent chat', hint: 'Show or hide the AI agent panel', keywords: ['chat', 'agent', 'ai', 'assistant'], icon: 'lucide:message-square', shortcut: '⌘I', group: 'layout' },
-  { id: 'collapse-editor', label: 'Collapse editor', hint: 'Minimize editor to icon rail', keywords: ['collapse', 'minimize', 'hide', 'editor'], icon: 'lucide:panel-left-close', shortcut: '⌘E', group: 'layout' },
+  { id: 'toggle-chat', label: 'Toggle agent chat', hint: 'Show or hide the AI agent panel', keywords: ['chat', 'agent', 'ai', 'assistant'], icon: 'lucide:message-square', shortcut: '\u2318I', group: 'layout' },
+  { id: 'collapse-editor', label: 'Collapse editor', hint: 'Minimize editor to icon rail', keywords: ['collapse', 'minimize', 'hide', 'editor'], icon: 'lucide:panel-left-close', shortcut: '\u2318E', group: 'layout' },
 
   // Layout presets
-  { id: 'layout-focus', label: 'Layout: Focus', hint: 'Editor only — no panels, pure code', keywords: ['focus', 'zen', 'clean', 'minimal', 'distraction'], icon: 'lucide:maximize-2', group: 'preset' },
+  { id: 'layout-focus', label: 'Layout: Focus', hint: 'Editor only \u2014 no panels, pure code', keywords: ['focus', 'zen', 'clean', 'minimal', 'distraction'], icon: 'lucide:maximize-2', group: 'preset' },
   { id: 'layout-review', label: 'Layout: Review', hint: 'Files + editor + chat for code review', keywords: ['review', 'browse', 'explore', 'full'], icon: 'lucide:columns-3', group: 'preset' },
   { id: 'layout-build', label: 'Layout: Build', hint: 'Editor + terminal + engine for build/debug', keywords: ['build', 'debug', 'run', 'terminal', 'compile'], icon: 'lucide:hammer', group: 'preset' },
 
   // Navigation
   { id: 'view-editor', label: 'Go to Editor', hint: 'Switch to the editor view', keywords: ['editor', 'code', 'edit'], icon: 'lucide:code-2', group: 'navigate' },
+  { id: 'view-preview', label: 'Go to Preview', hint: 'Switch to the preview view', keywords: ['preview', 'browser', 'live'], icon: 'lucide:eye', group: 'navigate' },
+  { id: 'view-workflows', label: 'Go to Workflows', hint: 'Switch to the workflow view', keywords: ['workflow', 'automation', 'pipeline'], icon: 'lucide:workflow', group: 'navigate' },
+  { id: 'view-grid', label: 'Go to Grid', hint: 'Switch to the grid view', keywords: ['grid', 'layout', 'dashboard'], icon: 'lucide:layout-grid', group: 'navigate' },
   { id: 'view-git', label: 'Go to Source Control', hint: 'Switch to the git view', keywords: ['git', 'source', 'control', 'diff'], icon: 'lucide:git-branch', group: 'navigate' },
   { id: 'view-prs', label: 'Go to Pull Requests', hint: 'Switch to the PR view', keywords: ['pr', 'pull', 'request', 'review'], icon: 'lucide:git-pull-request', group: 'navigate' },
   { id: 'view-settings', label: 'Go to Settings', hint: 'Open settings panel', keywords: ['settings', 'preferences', 'config'], icon: 'lucide:settings', group: 'navigate' },
+
+  // Git operations
+  { id: 'git-commit', label: 'Git: Commit', hint: 'Open source control to commit changes', keywords: ['git', 'commit', 'save', 'changes'], icon: 'lucide:git-commit-horizontal', group: 'git' },
+  { id: 'git-push', label: 'Git: Push', hint: 'Push commits to remote', keywords: ['git', 'push', 'upload', 'remote'], icon: 'lucide:upload', group: 'git' },
+  { id: 'git-pull', label: 'Git: Pull', hint: 'Pull latest changes from remote', keywords: ['git', 'pull', 'fetch', 'download'], icon: 'lucide:download', group: 'git' },
+  { id: 'git-stash', label: 'Git: Stash changes', hint: 'Stash uncommitted changes', keywords: ['git', 'stash', 'save', 'temp'], icon: 'lucide:archive', group: 'git' },
+
+  // PR operations
+  { id: 'pr-create', label: 'Create Pull Request', hint: 'Open the PR creation form', keywords: ['pr', 'pull', 'request', 'create', 'new'], icon: 'lucide:git-pull-request-create-arrow', group: 'pr' },
+
+  // Preview operations
+  { id: 'preview-refresh', label: 'Preview: Refresh', hint: 'Reload the preview panel', keywords: ['preview', 'refresh', 'reload', 'browser'], icon: 'lucide:refresh-cw', group: 'preview' },
 ]
 
-const GROUP_ORDER: Record<string, number> = { preset: 0, layout: 1, navigate: 2, search: 3 }
-const GROUP_LABELS: Record<string, string> = { preset: 'Layout Presets', layout: 'Toggle Panels', navigate: 'Navigation', search: 'Editor' }
+const COMMANDS_MAP = new Map(COMMANDS.map(c => [c.id, c]))
+
+const GROUP_ORDER: Record<string, number> = { recent: -1, context: 0, preset: 1, layout: 2, navigate: 3, search: 4, git: 5, pr: 6, preview: 7 }
+const GROUP_LABELS: Record<string, string> = {
+  recent: 'Recently Used',
+  context: 'Suggested',
+  preset: 'Layout Presets',
+  layout: 'Toggle Panels',
+  navigate: 'Navigation',
+  search: 'Editor',
+  git: 'Source Control',
+  pr: 'Pull Requests',
+  preview: 'Preview',
+}
+
+// Context-specific command priorities per view
+const VIEW_CONTEXT_COMMANDS: Partial<Record<ViewId, CommandId[]>> = {
+  editor: ['save-file', 'find-files', 'format-document', 'find-in-file', 'toggle-files', 'toggle-chat', 'toggle-terminal'],
+  git: ['git-commit', 'git-push', 'git-pull', 'git-stash', 'toggle-terminal'],
+  prs: ['pr-create', 'view-git', 'view-editor'],
+  preview: ['preview-refresh', 'view-editor'],
+  workflows: ['view-editor', 'toggle-terminal'],
+  grid: ['view-editor', 'toggle-terminal'],
+}
+
+const RECENT_KEY = 'ce:recent-commands'
+const MAX_RECENT = 5
+
+function loadRecent(): CommandId[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') } catch { return [] }
+}
+function saveRecent(ids: CommandId[]) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(ids.slice(0, MAX_RECENT))) } catch {}
+}
 
 export function CommandPalette({ open, onClose, onRun }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [recentIds, setRecentIds] = useState<CommandId[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+
+  const { activeView } = useView()
+
+  // Load recent commands on mount
+  useEffect(() => { setRecentIds(loadRecent()) }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -92,24 +160,61 @@ export function CommandPalette({ open, onClose, onRun }: CommandPaletteProps) {
     })
   }, [query])
 
-  // Group filtered commands
-  const grouped = useMemo(() => {
-    const groups = new Map<string, CommandItem[]>()
-    for (const cmd of filtered) {
-      const list = groups.get(cmd.group) || []
-      list.push(cmd)
-      groups.set(cmd.group, list)
+  // Build display groups: recently used + context-aware + standard groups
+  const displayGroups = useMemo(() => {
+    const groups: { key: string; label: string; items: CommandItem[] }[] = []
+    const usedIds = new Set<CommandId>()
+
+    const isSearching = query.trim().length > 0
+
+    // When not searching, show recent + context sections
+    if (!isSearching) {
+      // Recently used
+      const recentItems = recentIds
+        .map(id => COMMANDS_MAP.get(id))
+        .filter((c): c is CommandItem => !!c && filtered.includes(c))
+      if (recentItems.length > 0) {
+        groups.push({ key: 'recent', label: GROUP_LABELS.recent, items: recentItems })
+        recentItems.forEach(c => usedIds.add(c.id))
+      }
+
+      // Context-specific suggestions
+      const contextIds = VIEW_CONTEXT_COMMANDS[activeView]
+      if (contextIds) {
+        const contextItems = contextIds
+          .map(id => COMMANDS_MAP.get(id))
+          .filter((c): c is CommandItem => !!c && !usedIds.has(c.id))
+        if (contextItems.length > 0) {
+          groups.push({ key: 'context', label: `${GROUP_LABELS.context} \u2014 ${activeView.charAt(0).toUpperCase() + activeView.slice(1)}`, items: contextItems })
+          contextItems.forEach(c => usedIds.add(c.id))
+        }
+      }
     }
-    return [...groups.entries()].sort((a, b) => (GROUP_ORDER[a[0]] ?? 99) - (GROUP_ORDER[b[0]] ?? 99))
-  }, [filtered])
+
+    // Remaining commands grouped by their standard group
+    const remaining = filtered.filter(c => !usedIds.has(c.id))
+    const groupMap = new Map<string, CommandItem[]>()
+    for (const cmd of remaining) {
+      const list = groupMap.get(cmd.group) || []
+      list.push(cmd)
+      groupMap.set(cmd.group, list)
+    }
+    const sortedGroups = [...groupMap.entries()].sort((a, b) => (GROUP_ORDER[a[0]] ?? 99) - (GROUP_ORDER[b[0]] ?? 99))
+    for (const [group, items] of sortedGroups) {
+      groups.push({ key: group, label: GROUP_LABELS[group] ?? group, items })
+    }
+
+    return groups
+  }, [filtered, query, recentIds, activeView])
 
   // Flat list for keyboard nav
-  const flatList = useMemo(() => grouped.flatMap(([, items]) => items), [grouped])
+  const flatList = useMemo(() => displayGroups.flatMap(g => g.items), [displayGroups])
 
   useEffect(() => {
     if (!open) return
     setQuery('')
     setSelectedIndex(0)
+    setRecentIds(loadRecent())
     setTimeout(() => inputRef.current?.focus(), 10)
   }, [open])
 
@@ -131,6 +236,11 @@ export function CommandPalette({ open, onClose, onRun }: CommandPaletteProps) {
   if (!open) return null
 
   const run = (cmd: CommandItem) => {
+    // Update recent commands
+    const updated = [cmd.id, ...recentIds.filter(id => id !== cmd.id)].slice(0, MAX_RECENT)
+    setRecentIds(updated)
+    saveRecent(updated)
+
     onRun(cmd.id)
     onClose()
   }
@@ -165,17 +275,18 @@ export function CommandPalette({ open, onClose, onRun }: CommandPaletteProps) {
           {flatList.length === 0 && (
             <div className="px-3 py-5 text-center text-[12px] text-[var(--text-tertiary)]">No matching commands</div>
           )}
-          {grouped.map(([group, items]) => (
-            <div key={group}>
-              <div className="px-3 pt-2.5 pb-1">
-                <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)]">{GROUP_LABELS[group] ?? group}</span>
+          {displayGroups.map(({ key, label, items }) => (
+            <div key={key}>
+              <div className="px-3 pt-2.5 pb-1 flex items-center gap-2">
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)]">{label}</span>
+                <div className="flex-1 h-px bg-[var(--border)] opacity-50" />
               </div>
               {items.map((command) => {
                 const idx = flatIndex++
                 const isSelected = idx === selectedIndex
                 return (
                   <button
-                    key={command.id}
+                    key={`${key}-${command.id}`}
                     data-selected={isSelected}
                     onClick={() => run(command)}
                     className={cn(
