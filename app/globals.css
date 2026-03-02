@@ -86,6 +86,8 @@
   --sidebar-bg: #0d0909;
   --foreground: #ededed;
   --subtle: #666;
+  --font-sans: 'IBM Plex Sans', Inter, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
 
   --brand: #ca3a29;
   --brand-hover: #e04432;
@@ -155,6 +157,8 @@
   --sidebar-bg: #fdf5f5;
   --foreground: #171717;
   --subtle: #a3a3a3;
+  --font-sans: 'IBM Plex Sans', Inter, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
 
   --brand: #ca3a29;
   --brand-hover: #b42f20;
@@ -228,6 +232,8 @@
   --sidebar-bg: #060606;
   --foreground: #ffffff;
   --subtle: #636363;
+  --font-sans: 'iA Writer Quattro', 'Literata', Georgia, serif;
+  --font-mono: 'iA Writer Mono', 'Courier Prime', monospace;
 
   --brand: #ffffff;
   --brand-hover: #d4d4d4;
@@ -300,6 +306,8 @@
   --sidebar-bg: #f2f2f2;
   --foreground: #000000;
   --subtle: #999999;
+  --font-sans: 'iA Writer Quattro', 'Literata', Georgia, serif;
+  --font-mono: 'iA Writer Mono', 'Courier Prime', monospace;
 
   --brand: #000000;
   --brand-hover: #333333;
@@ -373,6 +381,8 @@
   --sidebar-bg: #09060f;
   --foreground: #f0f0f4;
   --subtle: #555;
+  --font-sans: 'Space Grotesk', Inter, system-ui, sans-serif;
+  --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
 
   --brand: #8b00ff;
   --brand-hover: #a835ff;
@@ -3587,12 +3597,12 @@ p { line-height: 1.6; }
    CyberNord Dark — Hacker terminal: matrix green on void black ☠️
    ══════════════════════════════════════════════════════════════════ */
 .dark[data-theme="cybernord"] {
-  --bg: #050505;
-  --bg-elevated: #0a0a0a;
-  --bg-subtle: #111111;
-  --bg-secondary: #080808;
-  --bg-tertiary: #151515;
-  --sidebar-bg: #030303;
+  --bg: #000000;
+  --bg-elevated: #050505;
+  --bg-subtle: #0a0a0a;
+  --bg-secondary: #030303;
+  --bg-tertiary: #0d0d0d;
+  --sidebar-bg: #000000;
   --foreground: #00ff41;
   --subtle: #00661a;
 
@@ -3606,55 +3616,55 @@ p { line-height: 1.6; }
   --info: #00e5ff;
 
   --text-primary: #00ff41;
-  --text-secondary: #00cc33;
-  --text-tertiary: #00991a;
-  --text-disabled: #003d0a;
+  --text-secondary: #00e636;
+  --text-tertiary: #00b32d;
+  --text-disabled: #004d10;
 
-  --border: #00330d;
-  --border-hover: #005516;
+  --border: #001a06;
+  --border-hover: #003d0f;
   --border-focus: #00ff41;
 
   --color-additions: #00ff41;
   --color-deletions: #ff3333;
 
-  --glass-bg: rgba(5, 5, 5, 0.95);
+  --glass-bg: rgba(0, 0, 0, 0.96);
   --glass-bg-hover: var(--bg-subtle);
   --glass-bg-elevated: var(--bg-subtle);
   --glass-border: var(--border);
-  --glass-border-hover: rgba(0, 255, 65, 0.18);
-  --glass-shadow: rgba(0, 0, 0, 0.8);
-  --brand-glow: rgba(0, 255, 65, 0.15);
-  --brand-glow-subtle: rgba(0, 255, 65, 0.05);
+  --glass-border-hover: rgba(0, 255, 65, 0.22);
+  --glass-shadow: rgba(0, 0, 0, 0.9);
+  --brand-glow: rgba(0, 255, 65, 0.20);
+  --brand-glow-subtle: rgba(0, 255, 65, 0.08);
   --brand-deep: #009922;
   --brand-chat: #00660e;
   --brand-contrast: #000000;
 
-  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.6);
-  --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.7);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.6);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 255, 65, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.7);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 255, 65, 0.06);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.85), 0 0 30px rgba(0, 255, 65, 0.08);
-  --shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.9), 0 0 50px rgba(0, 255, 65, 0.10);
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.7);
+  --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.8);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.7);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 255, 65, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 255, 65, 0.08);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.92), 0 0 36px rgba(0, 255, 65, 0.10);
+  --shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.95), 0 0 60px rgba(0, 255, 65, 0.14);
 
   --kn-claw: var(--brand);
   --vscode-text: var(--text-primary);
   --vscode-subtle: var(--text-tertiary);
   --vscode-muted: var(--text-secondary);
 
-  --overlay: rgba(0, 0, 0, 0.60);
+  --overlay: rgba(0, 0, 0, 0.70);
   --logo-filter: hue-rotate(100deg) saturate(2) brightness(1.5);
 
-  --scrollbar-thumb: #003d0a;
-  --scrollbar-thumb-hover: #005516;
-  --header-glass-bg: rgba(5, 5, 5, 0.95);
-  --shimmer-from: #0a0a0a;
-  --shimmer-via: #111111;
+  --scrollbar-thumb: #002a08;
+  --scrollbar-thumb-hover: #004d10;
+  --header-glass-bg: rgba(0, 0, 0, 0.96);
+  --shimmer-from: #050505;
+  --shimmer-via: #0a0a0a;
 
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
+  --radius-sm: 0px;
+  --radius-md: 1px;
+  --radius-lg: 2px;
 }
 
 /* ── CyberNord Light — terminal daylight mode ─────────────────── */
