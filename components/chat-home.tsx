@@ -13,11 +13,11 @@ import { useGitHubAuth } from '@/context/github-auth-context'
 import { getRecentFolders } from '@/context/local-context'
 
 const SUGGESTIONS = [
-  { icon: 'lucide:pencil', label: 'Edit code', prefix: 'Edit ' },
-  { icon: 'lucide:bug', label: 'Fix a bug', prefix: 'Fix ' },
-  { icon: 'lucide:book-open', label: 'Explain', prefix: 'Explain ' },
-  { icon: 'lucide:flask-conical', label: 'Write tests', prefix: 'Write tests for ' },
-  { icon: 'lucide:git-pull-request', label: 'Review', prefix: 'Review ' },
+  { icon: 'lucide:sparkles', label: 'Edit this', prefix: 'Edit ' },
+  { icon: 'lucide:zap', label: 'Squash bug', prefix: 'Fix ' },
+  { icon: 'lucide:flame', label: 'Explain plz', prefix: 'Explain ' },
+  { icon: 'lucide:wand-2', label: 'Test it', prefix: 'Write tests for ' },
+  { icon: 'lucide:star', label: 'Review PR', prefix: 'Review ' },
 ]
 
 interface Props {
@@ -73,13 +73,13 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto">
-      <div className="w-full max-w-[680px] py-8">
+      <div className="w-full max-w-[680px] py-5">
         {/* Logo + Heading */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="mb-3 text-[var(--text-tertiary)]">
-            <KnotLogo size={36} className="animate-knot-idle" />
+        <div className="flex flex-col items-center mb-4">
+          <div className="mb-2.5 text-[var(--text-tertiary)]">
+            <KnotLogo size={32} className="animate-knot-idle" />
           </div>
-          <h1 className="text-center text-[20px] font-semibold text-[var(--text-primary)] tracking-[-0.01em] leading-tight">
+          <h1 className="text-center text-[17px] font-semibold text-[var(--text-primary)] tracking-[-0.01em] leading-tight">
             {repoShort ? `What should we work on?` : `What do you want to build?`}
           </h1>
           {hasWorkspace && (
@@ -109,12 +109,12 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
             onBlur={() => setIsFocused(false)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
             placeholder={repoShort ? `Ask anything about ${repoShort}…` : 'Ask or type /command…'}
-            rows={3}
-            className="w-full resize-none bg-transparent px-4 pt-4 pb-1 text-[14px] leading-[1.6] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none"
+            rows={2}
+            className="w-full resize-none bg-transparent px-4 pt-3 pb-1 text-[14px] leading-[1.6] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none"
           />
 
           {/* Toolbar */}
-          <div className="px-3 pb-2.5 pt-1 space-y-1.5">
+          <div className="px-3 pb-2 pt-0.5 space-y-1">
             {/* Row 1: Attachments left, selectors + send right */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-0.5">
@@ -150,14 +150,14 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
         </div>
 
         {/* Quick action chips */}
-        <div className="flex flex-wrap items-center justify-center gap-1 mt-3">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2">
           {SUGGESTIONS.map((a, i) => (
             <button
               key={a.label}
               onClick={() => { setInput(a.prefix); inputRef.current?.focus() }}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[color-mix(in_srgb,var(--text-primary)_5%,transparent)] transition-all cursor-pointer animate-pill-float animate-pill-float-${i + 1}`}
+              className={`anime-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[color-mix(in_srgb,var(--brand)_8%,var(--bg-elevated))] text-[var(--text-secondary)] border border-[color-mix(in_srgb,var(--brand)_12%,var(--border))] hover:text-[var(--text-primary)] hover:bg-[color-mix(in_srgb,var(--brand)_14%,var(--bg-elevated))] hover:border-[color-mix(in_srgb,var(--brand)_30%,var(--border))] hover:scale-105 active:scale-95 transition-all cursor-pointer animate-pill-float animate-pill-float-${i + 1}`}
             >
-              <Icon icon={a.icon} width={12} height={12} />
+              <Icon icon={a.icon} width={14} height={14} className="text-[var(--brand)]" />
               {a.label}
             </button>
           ))}
@@ -165,7 +165,7 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
 
         {/* Workspace actions — shown when no folder/repo is open */}
         {!hasWorkspace && (
-          <div className="mt-8 space-y-3">
+          <div className="mt-5 space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-[var(--border)]" />
               <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-disabled)] font-medium">Get started</span>
@@ -270,10 +270,10 @@ export function ChatHome({ onSend, onSelectFolder, onCloneRepo }: Props) {
                         />
                         <button
                           onClick={() => setTokenRevealed(v => !v)}
-                          className="p-0.5 rounded hover:bg-[color-mix(in_srgb,var(--text-primary)_5%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+                          className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--text-primary)_5%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
                           title={tokenRevealed ? 'Hide' : 'Reveal'}
                         >
-                          <Icon icon={tokenRevealed ? 'lucide:eye-off' : 'lucide:eye'} width={12} height={12} />
+                          <Icon icon={tokenRevealed ? 'lucide:eye-off' : 'lucide:eye'} width={13} height={13} />
                         </button>
                       </div>
                       <button

@@ -192,6 +192,7 @@ pub fn run() {
             local_fs::local_read_file,
             local_fs::local_read_file_base64,
             local_fs::local_write_file,
+            local_fs::local_delete_path,
             local_fs::local_git_info,
             local_fs::local_git_diff,
             local_fs::local_git_commit,

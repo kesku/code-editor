@@ -102,7 +102,7 @@ export function EditorTabs() {
             )}
 
             {/* File icon */}
-            <Icon icon={icon} width={13} height={13} style={{ color: isActive ? color : undefined }} className={`transition-all duration-150 ${isActive ? 'scale-105' : 'text-[var(--text-tertiary)] group-hover:scale-105'}`} />
+            <Icon icon={icon} width={14} height={14} style={{ color: isActive ? color : undefined }} className={`transition-all duration-150 ${isActive ? 'scale-105' : 'text-[var(--text-tertiary)] group-hover:scale-105'}`} />
 
             {/* File name */}
             <span className="text-[11px] truncate max-w-[120px]" title={file.path}>
@@ -120,10 +120,10 @@ export function EditorTabs() {
             {/* Close button — show dot when dirty and not hovered */}
             <button
               onClick={e => { e.stopPropagation(); closeFile(file.path) }}
-              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-primary)_10%,transparent)] transition-all cursor-pointer ml-0.5"
+              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-primary)_10%,transparent)] transition-all cursor-pointer ml-0.5"
               title="Close (⌘W)"
             >
-              <Icon icon="lucide:x" width={11} height={11} />
+              <Icon icon="lucide:x" width={12} height={12} />
             </button>
 
             {/* Separator */}

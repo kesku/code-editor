@@ -1520,18 +1520,18 @@ export function AgentPanel() {
       {/* Suggestions */}
       {suggestions.length > 0 && (
         <div className="px-3 pb-1 shrink-0">
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {suggestions.map((s, i) => (
               <button
                 key={s.cmd}
                 onClick={() => { setInput(s.cmd + ' '); setActiveSuggestionIdx(-1) }}
-                className={`flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-colors cursor-pointer ${
                   i === activeSuggestionIdx
                     ? 'border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--text-primary)]'
                     : 'bg-[var(--bg-subtle)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--brand)]'
                 }`}
               >
-                <Icon icon={s.icon} width={10} height={10} className="text-[var(--brand)]" />
+                <Icon icon={s.icon} width={12} height={12} className="text-[var(--brand)]" />
                 <span className="font-mono text-[var(--brand)]">{s.cmd}</span>
                 <span className="text-[var(--text-tertiary)]">{s.desc}</span>
               </button>

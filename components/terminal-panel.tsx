@@ -358,7 +358,7 @@ function TerminalPane({
               onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}
               className="ml-1 hover:text-[var(--text-primary)] cursor-pointer"
             >
-              <Icon icon="lucide:x" width={10} height={10} />
+              <Icon icon="lucide:x" width={12} height={12} />
             </span>
           </button>
         ))}
@@ -411,7 +411,7 @@ function TerminalPane({
             className="p-1 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shrink-0"
             title="Close pane"
           >
-            <Icon icon="lucide:x" width={12} height={12} />
+            <Icon icon="lucide:x" width={13} height={13} />
           </button>
         )}
 

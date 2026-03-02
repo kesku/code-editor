@@ -212,10 +212,10 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, onDelete, collapse
       )}
       <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-0.5">
         <button onClick={e => handlePin(s.id, e)} className="p-1 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer">
-          <Icon icon={s.pinned ? 'lucide:pin-off' : 'lucide:pin'} width={12} height={12} />
+          <Icon icon={s.pinned ? 'lucide:pin-off' : 'lucide:pin'} width={13} height={13} />
         </button>
         <button onClick={e => handleDelete(s.id, e)} className="p-1 rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-disabled)] hover:text-[var(--color-deletions)] cursor-pointer">
-          <Icon icon="lucide:trash-2" width={12} height={12} />
+          <Icon icon="lucide:trash-2" width={13} height={13} />
         </button>
       </div>
     </div>
@@ -308,33 +308,33 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, onDelete, collapse
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-terminal'))}
-            className="w-[30px] h-[30px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
             title="Terminal (⌘J)"
           >
-            <Icon icon="lucide:terminal" width={15} height={15} />
+            <Icon icon="lucide:terminal" width={16} height={16} />
           </button>
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', metaKey: true }))}
-            className="w-[30px] h-[30px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
             title="Toggle Explorer"
           >
-            <Icon icon="lucide:folder" width={15} height={15} />
+            <Icon icon="lucide:folder" width={16} height={16} />
           </button>
         </div>
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-git-panel'))}
-            className="w-[30px] h-[30px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
             title="Git"
           >
-            <Icon icon="lucide:git-branch" width={15} height={15} />
+            <Icon icon="lucide:git-branch" width={16} height={16} />
           </button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
-            className="w-[30px] h-[30px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
             title="Settings"
           >
-            <Icon icon="lucide:settings" width={15} height={15} className="animate-gear-sway" />
+            <Icon icon="lucide:settings" width={16} height={16} className="animate-gear-sway" />
           </button>
         </div>
       </div>

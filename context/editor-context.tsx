@@ -26,6 +26,7 @@ interface EditorContextValue {
   setActiveFile: (path: string | null) => void
   openFile: (path: string, content: string, sha?: string, options?: OpenFileOptions) => void
   closeFile: (path: string) => void
+  closeFilesUnder: (dirPath: string) => void
   updateFileContent: (path: string, content: string) => void
   markClean: (path: string, newSha?: string) => void
   reorderFiles: (fromIndex: number, toIndex: number) => void
@@ -85,6 +86,18 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setActiveFile(prev => prev === path ? null : prev)
   }, [])
 
+  const closeFilesUnder = useCallback((dirPath: string) => {
+    const prefix = dirPath.endsWith('/') ? dirPath : dirPath + '/'
+    setFiles(prev => {
+      const remaining = prev.filter(f => f.path !== dirPath && !f.path.startsWith(prefix))
+      return remaining
+    })
+    setActiveFile(prev => {
+      if (prev && (prev === dirPath || prev.startsWith(prefix))) return null
+      return prev
+    })
+  }, [])
+
   const updateFileContent = useCallback((path: string, content: string) => {
     setFiles(prev => prev.map(f =>
       f.path === path ? { ...f, content, dirty: content !== f.originalContent } : f
@@ -121,9 +134,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   }, [files, activeFile])
 
   const value = useMemo<EditorContextValue>(() => ({
-    files, activeFile, setActiveFile, openFile, closeFile,
+    files, activeFile, setActiveFile, openFile, closeFile, closeFilesUnder,
     updateFileContent, markClean, reorderFiles, getFile,
-  }), [files, activeFile, setActiveFile, openFile, closeFile, updateFileContent, markClean, reorderFiles, getFile])
+  }), [files, activeFile, setActiveFile, openFile, closeFile, closeFilesUnder, updateFileContent, markClean, reorderFiles, getFile])
 
   return (
     <EditorContext.Provider value={value}>

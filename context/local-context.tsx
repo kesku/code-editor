@@ -41,6 +41,7 @@ interface LocalContextValue {
   readFile: (path: string) => Promise<string>
   readFileBase64: (path: string) => Promise<string>
   writeFile: (path: string, content: string) => Promise<void>
+  deletePath: (path: string) => Promise<void>
   refresh: () => Promise<void>
   commitFiles: (message: string, paths: string[]) => Promise<string>
   getDiff: (path: string, staged?: boolean) => Promise<string>
@@ -290,6 +291,23 @@ export function LocalProvider({ children }: { children: ReactNode }) {
     await writable.close()
   }, [desktop, rootPath])
 
+  const deletePath = useCallback(async (path: string) => {
+    if (desktop) {
+      if (!rootPath) throw new Error('No root path')
+      await tauriInvoke('local_delete_path', { root: rootPath, path })
+      return
+    }
+
+    const handle = webDirHandleRef.current
+    if (!handle) throw new Error('No folder open')
+    const parts = path.split('/')
+    let current: FileSystemDirectoryHandle = handle
+    for (let i = 0; i < parts.length - 1; i++) {
+      current = await current.getDirectoryHandle(parts[i])
+    }
+    await current.removeEntry(parts[parts.length - 1], { recursive: true })
+  }, [desktop, rootPath])
+
   const refresh = useCallback(async () => {
     if (desktop && rootPath) {
       await loadTreeTauri(rootPath)
@@ -381,11 +399,11 @@ export function LocalProvider({ children }: { children: ReactNode }) {
     localMode, rootPath, localTree, gitInfo, branches,
     available: true, isWebFS, remoteRepo, aheadBehind,
     openFolder, setRootPath, exitLocalMode,
-    readFile, readFileBase64, writeFile, refresh, commitFiles, getDiff,
+    readFile, readFileBase64, writeFile, deletePath, refresh, commitFiles, getDiff,
     unstageFiles, undoLastCommit, discardChanges, discardStagedChanges, switchBranch, push, gitLog, refreshAheadBehind, hasUpstream,
   }), [localMode, rootPath, localTree, gitInfo, branches, isWebFS, remoteRepo, aheadBehind,
     openFolder, setRootPath, exitLocalMode,
-    readFile, readFileBase64, writeFile, refresh, commitFiles, getDiff,
+    readFile, readFileBase64, writeFile, deletePath, refresh, commitFiles, getDiff,
     unstageFiles, undoLastCommit, discardChanges, discardStagedChanges, switchBranch, push, gitLog, refreshAheadBehind, hasUpstream])
 
   return (

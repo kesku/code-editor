@@ -16,6 +16,7 @@ import { usePreview } from '@/context/preview-context'
 import { SpotifyPlugin } from '@/components/plugins/spotify/spotify-plugin'
 import { BranchPicker } from '@/components/branch-picker'
 import { FolderIndicator } from '@/components/source-switcher'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 // View components — lazy loaded
 const EditorView = dynamic(() => import('@/components/views/editor-view').then(m => ({ default: m.EditorView })), { ssr: false })
@@ -58,9 +59,7 @@ export default function EditorLayout() {
   const { activeView, setView } = useView()
 
   // ─── Minimal state ──────────────────────────────────────
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    try { return localStorage.getItem('code-editor:sidebar-collapsed') === 'true' } catch { return false }
-  })
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [isTauriDesktop, setIsTauriDesktop] = useState(false)
   const [isMacTauri, setIsMacTauri] = useState(false)
@@ -73,12 +72,22 @@ export default function EditorLayout() {
   const [indicatorStyle, setIndicatorStyle] = useState<{ left: number; width: number }>({ left: 0, width: 0 })
 
   // Terminal — persisted so tabs survive across page reloads and view switches
-  const [terminalVisible, setTerminalVisible] = useState(() => {
-    try { return localStorage.getItem('code-editor:terminal-visible') === 'true' } catch { return false }
-  })
-  const [terminalHeight, setTerminalHeight] = useState(() => {
-    try { const h = localStorage.getItem('code-editor:terminal-height'); return h ? Math.max(120, Math.min(600, parseInt(h, 10))) : 240 } catch { return 240 }
-  })
+  const [terminalVisible, setTerminalVisible] = useState(false)
+  const [terminalHeight, setTerminalHeight] = useState(240)
+
+  // Hydrate persisted state from localStorage after mount to avoid SSR mismatch
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('code-editor:sidebar-collapsed') === 'true') setSidebarCollapsed(true)
+    } catch {}
+    try {
+      if (localStorage.getItem('code-editor:terminal-visible') === 'true') setTerminalVisible(true)
+    } catch {}
+    try {
+      const h = parseInt(localStorage.getItem('code-editor:terminal-height') || '')
+      if (h >= 120 && h <= 600) setTerminalHeight(h)
+    } catch {}
+  }, [])
 
   // Overlay modals
   const [quickOpenVisible, setQuickOpenVisible] = useState(false)
@@ -428,7 +437,7 @@ export default function EditorLayout() {
                 } ${flashedTab === v ? 'ring-1 ring-[var(--brand)] ring-opacity-60' : ''}`}
                 title={`${VIEW_ICONS[v].label} (⌘${i + 1})`}
               >
-                <Icon icon={VIEW_ICONS[v].icon} width={15} height={15} />
+                <Icon icon={VIEW_ICONS[v].icon} width={16} height={16} />
                 <span className="hidden sm:inline">{VIEW_ICONS[v].label}</span>
                 {v === 'git' && dirtyCount > 0 && (
                   <span className="px-1 min-w-[16px] text-center rounded-full bg-[var(--brand)] text-[var(--brand-contrast)] text-[9px] leading-[16px] animate-badge-pop">{dirtyCount}</span>
@@ -441,24 +450,26 @@ export default function EditorLayout() {
 
           {/* Settings */}
           <button onClick={() => setSettingsVisible(true)} className="tauri-no-drag p-1.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors" title="Settings">
-            <Icon icon="lucide:settings" width={16} height={16} className="animate-gear-sway" />
+            <Icon icon="lucide:settings" width={17} height={17} className="animate-gear-sway" />
           </button>
         </div>
 
         {/* Active view with crossfade transition */}
         <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
           <div key={activeView} className="flex-1 flex min-h-0 min-w-0 w-full overflow-hidden view-enter">
-            {activeView === 'editor' && <EditorView />}
-            {activeView === 'preview' && <PreviewPanel />}
-            {activeView === 'workflows' && <WorkflowView />}
-            {activeView === 'grid' && <GridView />}
-            {activeView === 'git' && <GitView />}
-            {activeView === 'prs' && <PrView />}
-            {activeView === 'settings' && (
-              <div className="flex-1 flex items-center justify-center">
-                <SettingsPanel open={true} onClose={() => setView('editor')} />
-              </div>
-            )}
+            <ErrorBoundary key={activeView} fallbackLabel={`${VIEW_ICONS[activeView]?.label ?? activeView} failed to render`}>
+              {activeView === 'editor' && <EditorView />}
+              {activeView === 'preview' && <PreviewPanel />}
+              {activeView === 'workflows' && <WorkflowView />}
+              {activeView === 'grid' && <GridView />}
+              {activeView === 'git' && <GitView />}
+              {activeView === 'prs' && <PrView />}
+              {activeView === 'settings' && (
+                <div className="flex-1 flex items-center justify-center">
+                  <SettingsPanel open={true} onClose={() => setView('editor')} />
+                </div>
+              )}
+            </ErrorBoundary>
           </div>
         </div>
 

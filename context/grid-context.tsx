@@ -25,10 +25,20 @@ export interface AiMessage {
   timestamp: number
 }
 
+export interface SavedItem {
+  id: string
+  type: 'link' | 'text'
+  title: string
+  content: string
+  url?: string
+  createdAt: number
+}
+
 export interface Grid {
   id: string
   name: string
   cards: GridCard[]
+  savedItems: SavedItem[]
   viewportX: number
   viewportY: number
   zoom: number
@@ -53,6 +63,10 @@ interface GridContextValue {
   updateViewport: (x: number, y: number, zoom: number) => void
   selectedCardId: string | null
   setSelectedCardId: (id: string | null) => void
+  addSavedItem: (type: SavedItem['type'], title: string, content: string, url?: string) => string
+  removeSavedItem: (itemId: string) => void
+  updateSavedItem: (itemId: string, updates: Partial<SavedItem>) => void
+  convertSavedItemToCard: (itemId: string) => string | null
 }
 
 const GridContext = createContext<GridContextValue | null>(null)
@@ -68,6 +82,7 @@ function createDefaultGrid(name = 'Main Grid'): Grid {
     id: makeId(),
     name,
     cards: [],
+    savedItems: [],
     viewportX: 0,
     viewportY: 0,
     zoom: 1,
@@ -101,8 +116,9 @@ export function GridProvider({ children }: { children: ReactNode }) {
     } catch {}
 
     if (data && data.length > 0) {
-      setGrids(data)
-      setActiveGridId(data[0].id)
+      const migrated = data.map(g => ({ ...g, savedItems: g.savedItems || [] }))
+      setGrids(migrated)
+      setActiveGridId(migrated[0].id)
     } else {
       const initial = createDefaultGrid()
       setGrids([initial])
@@ -222,15 +238,69 @@ export function GridProvider({ children }: { children: ReactNode }) {
     mutateActiveGrid(g => ({ ...g, viewportX: x, viewportY: y, zoom }))
   }, [mutateActiveGrid])
 
+  const addSavedItem = useCallback((type: SavedItem['type'], title: string, content: string, url?: string) => {
+    const id = makeId()
+    const item: SavedItem = { id, type, title, content, url, createdAt: Date.now() }
+    mutateActiveGrid(g => ({ ...g, savedItems: [...(g.savedItems || []), item] }))
+    return id
+  }, [mutateActiveGrid])
+
+  const removeSavedItem = useCallback((itemId: string) => {
+    mutateActiveGrid(g => ({ ...g, savedItems: (g.savedItems || []).filter(i => i.id !== itemId) }))
+  }, [mutateActiveGrid])
+
+  const updateSavedItem = useCallback((itemId: string, updates: Partial<SavedItem>) => {
+    mutateActiveGrid(g => ({
+      ...g,
+      savedItems: (g.savedItems || []).map(i => i.id === itemId ? { ...i, ...updates } : i),
+    }))
+  }, [mutateActiveGrid])
+
+  const convertSavedItemToCard = useCallback((itemId: string) => {
+    const grid = gridsRef.current.find(g => g.id === activeGridId)
+    const item = (grid?.savedItems || []).find(i => i.id === itemId)
+    if (!item) return null
+
+    const cardType: GridCard['type'] = item.type === 'link' ? 'website' : 'text'
+    const cardId = makeId()
+    const size = DEFAULT_CARD_SIZES[cardType]
+    const maxZ = grid?.cards.reduce((max, c) => Math.max(max, c.zIndex), 0) ?? 0
+    const centerX = grid ? (-grid.viewportX + 400) / grid.zoom : 200
+    const centerY = grid ? (-grid.viewportY + 300) / grid.zoom : 200
+
+    const card: GridCard = {
+      id: cardId,
+      type: cardType,
+      x: centerX,
+      y: centerY,
+      width: size.width,
+      height: size.height,
+      zIndex: maxZ + 1,
+      title: item.title,
+      content: item.type === 'text' ? item.content : undefined,
+      url: item.type === 'link' ? (item.url || item.content) : undefined,
+    }
+
+    mutateActiveGrid(g => ({
+      ...g,
+      cards: [...g.cards, card],
+      savedItems: (g.savedItems || []).filter(i => i.id !== itemId),
+    }))
+    setSelectedCardId(cardId)
+    return cardId
+  }, [mutateActiveGrid, activeGridId, setSelectedCardId])
+
   const value = useMemo<GridContextValue>(() => ({
     grids, activeGridId, activeGrid,
     createGrid, deleteGrid, renameGrid, switchGrid,
     addCard, updateCard, removeCard, moveCard, resizeCard, bringToFront,
     updateViewport, selectedCardId, setSelectedCardId,
+    addSavedItem, removeSavedItem, updateSavedItem, convertSavedItemToCard,
   }), [grids, activeGridId, activeGrid,
     createGrid, deleteGrid, renameGrid, switchGrid,
     addCard, updateCard, removeCard, moveCard, resizeCard, bringToFront,
-    updateViewport, selectedCardId, setSelectedCardId])
+    updateViewport, selectedCardId, setSelectedCardId,
+    addSavedItem, removeSavedItem, updateSavedItem, convertSavedItemToCard])
 
   return (
     <GridContext.Provider value={value}>

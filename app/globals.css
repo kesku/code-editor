@@ -1549,18 +1549,23 @@ p { line-height: 1.6; }
 }
 
 @keyframes pill-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-4px) scale(1.02); }
 }
 
 .animate-pill-float {
-  animation: pill-float 4s ease-in-out infinite;
+  animation: pill-float 3.5s cubic-bezier(0.37, 0, 0.63, 1) infinite;
 }
 .animate-pill-float-1 { animation-delay: 0s; }
-.animate-pill-float-2 { animation-delay: 0.6s; }
-.animate-pill-float-3 { animation-delay: 1.2s; }
-.animate-pill-float-4 { animation-delay: 1.8s; }
-.animate-pill-float-5 { animation-delay: 2.4s; }
+.animate-pill-float-2 { animation-delay: 0.5s; }
+.animate-pill-float-3 { animation-delay: 1s; }
+.animate-pill-float-4 { animation-delay: 1.5s; }
+.animate-pill-float-5 { animation-delay: 2s; }
+
+.anime-chip:hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 16%, transparent),
+              0 2px 8px -2px color-mix(in srgb, var(--brand) 12%, transparent);
+}
 
 @keyframes orbit-dot {
   0%   { box-shadow: 0 0 4px 1px var(--color-additions, #22c55e); }

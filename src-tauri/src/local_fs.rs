@@ -128,6 +128,24 @@ pub fn local_write_file(root: String, path: String, content: String) -> Result<(
 }
 
 #[tauri::command]
+pub fn local_delete_path(root: String, path: String) -> Result<(), String> {
+    let full = PathBuf::from(&root).join(&path);
+    if !full.exists() {
+        return Err(format!("Path does not exist: {}", path));
+    }
+    if !full.starts_with(&root) {
+        return Err("Cannot delete files outside the project root".to_string());
+    }
+    if full.is_dir() {
+        fs::remove_dir_all(&full)
+            .map_err(|e| format!("Failed to delete directory {}: {}", path, e))
+    } else {
+        fs::remove_file(&full)
+            .map_err(|e| format!("Failed to delete {}: {}", path, e))
+    }
+}
+
+#[tauri::command]
 pub fn local_git_info(root: String) -> Result<GitInfo, String> {
     // Check if it's a git repo
     let git_dir = PathBuf::from(&root).join(".git");

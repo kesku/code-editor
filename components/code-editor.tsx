@@ -19,7 +19,11 @@ if (typeof self !== 'undefined' && !(self as any).MonacoEnvironment) {
     new Blob(['self.onmessage = function() {}'], { type: 'application/javascript' })
   );
   (self as any).MonacoEnvironment = {
-    getWorker() { return new Worker(noop) },
+    getWorker() {
+      const w = new Worker(noop)
+      w.onerror = (e) => e.preventDefault()
+      return w
+    },
     getWorkerUrl() { return noop },
   }
 }
@@ -185,7 +189,7 @@ export function CodeEditor() {
     let mounted = true
 
     const initMonaco = async () => {
-      const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs'
+      const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/esm/vs'
       const workerUrls: Record<string, string> = {
         editor: `${base}/editor/editor.worker.js`,
         json: `${base}/language/json/json.worker.js`,
@@ -225,17 +229,22 @@ export function CodeEditor() {
           }
           const key = labelMap[label] || 'editor'
           const blobUrl = workerBlobs.get(key) ?? workerBlobs.get('editor')
-          if (!blobUrl) return new Worker(noopWorkerUrl)
+          if (!blobUrl) {
+            const w = new Worker(noopWorkerUrl)
+            w.onerror = (e) => e.preventDefault()
+            return w
+          }
           try {
             const w = new Worker(blobUrl)
             w.onerror = (e) => {
               e.preventDefault()
-              console.warn(`[Monaco] Worker "${label}" error:`, e.message)
+              e.stopImmediatePropagation()
             }
             return w
-          } catch (err) {
-            console.warn(`[Monaco] Worker "${label}" failed to start, using noop:`, err)
-            return new Worker(noopWorkerUrl)
+          } catch {
+            const w = new Worker(noopWorkerUrl)
+            w.onerror = (e) => e.preventDefault()
+            return w
           }
         },
       }

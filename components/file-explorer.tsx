@@ -1,10 +1,101 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Icon } from '@iconify/react'
 import { useRepo, type TreeNode } from '@/context/repo-context'
 import { useEditor } from '@/context/editor-context'
 import { useLocal } from '@/context/local-context'
+
+// ─── Context menu ───────────────────────────────────────────
+
+interface ContextMenuState {
+  x: number
+  y: number
+  path: string
+  isDir: boolean
+}
+
+function FileContextMenu({ menu, onDelete, onClose }: {
+  menu: ContextMenuState
+  onDelete: () => void
+  onClose: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', esc) }
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      className="fixed z-[9999] min-w-[140px] py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-elevated)] shadow-xl animate-fade-in"
+      style={{ top: menu.y, left: menu.x, animationDuration: '0.1s' }}
+    >
+      <button
+        onClick={onDelete}
+        className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[12px] text-red-400 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+      >
+        <Icon icon="lucide:trash-2" width={13} height={13} />
+        Delete
+      </button>
+    </div>
+  )
+}
+
+function DeleteConfirmDialog({ path, isDir, onConfirm, onCancel }: {
+  path: string
+  isDir: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const name = path.split('/').pop() ?? path
+
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [onCancel])
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40" onClick={onCancel}>
+      <div ref={ref} onClick={e => e.stopPropagation()} className="w-[340px] rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl p-5 animate-fade-in" style={{ animationDuration: '0.15s' }}>
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="p-2 rounded-lg bg-red-500/10">
+            <Icon icon="lucide:trash-2" width={16} height={16} className="text-red-400" />
+          </div>
+          <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">Delete {isDir ? 'folder' : 'file'}?</h3>
+        </div>
+        <p className="text-[12px] text-[var(--text-secondary)] mb-4 leading-relaxed">
+          Are you sure you want to delete <span className="font-mono text-[11px] px-1 py-0.5 rounded bg-[var(--bg-subtle)] text-[var(--text-primary)]">{name}</span>?
+          {isDir && ' This will delete all contents inside it.'}
+          {' '}This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── File icon mapping ──────────────────────────────────────────
 
@@ -85,7 +176,7 @@ function buildTree(nodes: TreeNode[]): (TreeDir | TreeFile)[] {
 
 // ─── Tree Item ──────────────────────────────────────────────────
 
-function DirItem({ dir, depth }: { dir: TreeDir; depth: number }) {
+function DirItem({ dir, depth, onContextMenu }: { dir: TreeDir; depth: number; onContextMenu: (e: React.MouseEvent, path: string, isDir: boolean) => void }) {
   const [expanded, setExpanded] = useState(depth < 1)
   const childFileCount = dir.children.filter(c => c.type === 'file').length
   const childDirCount = dir.children.filter(c => c.type === 'dir').length
@@ -94,6 +185,7 @@ function DirItem({ dir, depth }: { dir: TreeDir; depth: number }) {
     <div>
       <button
         onClick={() => setExpanded(!expanded)}
+        onContextMenu={e => onContextMenu(e, dir.path, true)}
         className="flex items-center gap-1.5 w-full text-left py-[3px] hover:bg-[var(--bg-subtle)] rounded-sm transition-all duration-150 cursor-pointer group"
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
       >
@@ -121,8 +213,8 @@ function DirItem({ dir, depth }: { dir: TreeDir; depth: number }) {
         <div className="animate-fade-in" style={{ animationDuration: '0.15s' }}>
           {dir.children.map(child =>
             child.type === 'dir'
-              ? <DirItem key={child.path} dir={child} depth={depth + 1} />
-              : <FileItem key={child.path} file={child} depth={depth + 1} />
+              ? <DirItem key={child.path} dir={child} depth={depth + 1} onContextMenu={onContextMenu} />
+              : <FileItem key={child.path} file={child} depth={depth + 1} onContextMenu={onContextMenu} />
           )}
         </div>
       )}
@@ -139,7 +231,7 @@ const GIT_STATUS_COLORS: Record<string, { color: string; label: string }> = {
   '?': { color: 'var(--text-tertiary)', label: 'Untracked' },
 }
 
-function FileItem({ file, depth }: { file: TreeFile; depth: number }) {
+function FileItem({ file, depth, onContextMenu }: { file: TreeFile; depth: number; onContextMenu: (e: React.MouseEvent, path: string, isDir: boolean) => void }) {
   const { activeFile } = useEditor()
   const local = useLocal()
   const gitStatus = local.gitInfo?.status.find(s => s.path === file.path)?.status
@@ -155,6 +247,7 @@ function FileItem({ file, depth }: { file: TreeFile; depth: number }) {
   return (
     <button
       onClick={handleClick}
+      onContextMenu={e => onContextMenu(e, file.path, false)}
       className={`flex items-center gap-1.5 w-full text-left py-[3px] rounded-sm transition-all duration-150 cursor-pointer group ${
         isActive
           ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--text-primary)]'
@@ -186,6 +279,32 @@ function FileItem({ file, depth }: { file: TreeFile; depth: number }) {
 export function FileExplorer() {
   const { repo, tree, treeLoading, treeError, loadTree } = useRepo()
   const local = useLocal()
+  const { closeFile, closeFilesUnder } = useEditor()
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ path: string; isDir: boolean } | null>(null)
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, path: string, isDir: boolean) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, path, isDir })
+  }, [])
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return
+    try {
+      await local.deletePath(deleteTarget.path)
+      if (deleteTarget.isDir) {
+        closeFilesUnder(deleteTarget.path)
+      } else {
+        closeFile(deleteTarget.path)
+      }
+      await local.refresh()
+    } catch (err) {
+      console.error('Delete failed:', err)
+    }
+    setDeleteTarget(null)
+  }, [deleteTarget, local, closeFile, closeFilesUnder])
 
   // Convert local tree entries to TreeNode format for unified rendering
   const effectiveTree: TreeNode[] = useMemo(() => {
@@ -295,10 +414,27 @@ export function FileExplorer() {
         )}
         {filteredTree.map(node =>
           node.type === 'dir'
-            ? <DirItem key={node.path} dir={node} depth={0} />
-            : <FileItem key={node.path} file={node as TreeFile} depth={0} />
+            ? <DirItem key={node.path} dir={node} depth={0} onContextMenu={handleContextMenu} />
+            : <FileItem key={node.path} file={node as TreeFile} depth={0} onContextMenu={handleContextMenu} />
         )}
       </div>
+
+      {contextMenu && (
+        <FileContextMenu
+          menu={contextMenu}
+          onDelete={() => { setDeleteTarget({ path: contextMenu.path, isDir: contextMenu.isDir }); setContextMenu(null) }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteConfirmDialog
+          path={deleteTarget.path}
+          isDir={deleteTarget.isDir}
+          onConfirm={handleDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </div>
   )
 }
