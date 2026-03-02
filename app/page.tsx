@@ -12,6 +12,7 @@ import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { isTauri } from '@/lib/tauri'
 import { fetchFileContentsByName as fetchFileContents, commitFilesByName as commitFiles } from '@/lib/github-api'
 import { PluginSlotRenderer } from '@/context/plugin-context'
+import { usePreview } from '@/context/preview-context'
 import { SpotifyPlugin } from '@/components/plugins/spotify/spotify-plugin'
 import { BranchPicker } from '@/components/branch-picker'
 
@@ -29,17 +30,21 @@ const CommandPalette = dynamic(() => import('@/components/command-palette').then
 const ShortcutsOverlay = dynamic(() => import('@/components/shortcuts-overlay').then(m => ({ default: m.ShortcutsOverlay })), { ssr: false })
 const Landing = dynamic(() => import('@/components/landing'), { ssr: false })
 const TerminalPanel = dynamic(() => import('@/components/terminal-panel').then(m => ({ default: m.TerminalPanel })), { ssr: false })
+const PreviewPanel = dynamic(() => import('@/components/preview/preview-panel').then(m => ({ default: m.PreviewPanel })), { ssr: false })
+const ComponentIsolatorListener = dynamic(() => import('@/components/preview/component-isolator').then(m => ({ default: m.ComponentIsolatorListener })), { ssr: false })
+const PipWindow = dynamic(() => import('@/components/preview/pip-window').then(m => ({ default: m.PipWindow })), { ssr: false })
 
 const VIEW_ICONS: Record<ViewId, { icon: string; label: string }> = {
   chat: { icon: 'lucide:message-square', label: 'Chat' },
   editor: { icon: 'lucide:code-2', label: 'Editor' },
+  preview: { icon: 'lucide:eye', label: 'Preview' },
   diff: { icon: 'lucide:git-compare', label: 'Diff' },
   git: { icon: 'lucide:git-branch', label: 'Git' },
   prs: { icon: 'lucide:git-pull-request', label: 'PRs' },
   settings: { icon: 'lucide:settings', label: 'Settings' },
 }
 
-const VISIBLE_VIEWS: ViewId[] = ['chat', 'editor', 'git', 'prs']
+const VISIBLE_VIEWS: ViewId[] = ['chat', 'editor', 'preview', 'git', 'prs']
 
 export default function EditorLayout() {
   const { status } = useGateway()
@@ -352,6 +357,7 @@ export default function EditorLayout() {
           <div key={activeView} className="flex-1 flex min-h-0 overflow-hidden view-enter">
             {activeView === 'chat' && <ChatView />}
             {activeView === 'editor' && <EditorView />}
+            {activeView === 'preview' && <PreviewPanel />}
             {activeView === 'git' && <GitView />}
             {activeView === 'prs' && <PrView />}
             {activeView === 'settings' && (
@@ -413,6 +419,8 @@ export default function EditorLayout() {
 
       {/* Plugins */}
       <SpotifyPlugin />
+      <PipWindow />
+      <ComponentIsolatorListener />
       <PluginSlotRenderer slot="floating" />
 
       {/* Modal overlays */}

@@ -100,7 +100,7 @@ export function PreviewPanel() {
             </button>
           ))}
           <button
-            onClick={() => setCarouselMode(v => !v)}
+            onClick={() => setCarouselMode(!carouselMode)}
             className={`p-1 rounded transition-colors cursor-pointer ${
               carouselMode
                 ? 'bg-[color-mix(in_srgb,var(--brand)_15%,transparent)] text-[var(--brand)]'

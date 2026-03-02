@@ -8,6 +8,7 @@ import { LocalProvider } from '@/context/local-context'
 import { ViewProvider } from '@/context/view-context'
 import { GitHubAuthProvider } from '@/context/github-auth-context'
 import { PluginProvider } from '@/context/plugin-context'
+import { PreviewProvider } from '@/context/preview-context'
 
 export const metadata: Metadata = {
   title: 'Knot Code',
@@ -29,9 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <EditorProvider>
                     <LocalProvider>
                       <ViewProvider>
+                        <PreviewProvider>
                         <PluginProvider>
                           {children}
                         </PluginProvider>
+                        </PreviewProvider>
                       </ViewProvider>
                     </LocalProvider>
                   </EditorProvider>
