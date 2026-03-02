@@ -1,0 +1,91 @@
+"$schema" = "../gen/schemas/desktop-schema.json"
+
+[[permission]]
+identifier = "allow-create-terminal"
+description = "Allows creating a new terminal session"
+commands.allow = ["create_terminal"]
+
+[[permission]]
+identifier = "allow-write-terminal"
+description = "Allows writing data to a terminal session"
+commands.allow = ["write_terminal"]
+
+[[permission]]
+identifier = "allow-resize-terminal"
+description = "Allows resizing a terminal session"
+commands.allow = ["resize_terminal"]
+
+[[permission]]
+identifier = "allow-kill-terminal"
+description = "Allows killing a terminal session"
+commands.allow = ["kill_terminal"]
+
+[[permission]]
+identifier = "allow-engine-status"
+description = "Allows checking gateway engine status"
+commands.allow = ["engine_status"]
+
+[[permission]]
+identifier = "allow-engine-start"
+description = "Allows starting the gateway engine"
+commands.allow = ["engine_start"]
+
+[[permission]]
+identifier = "allow-engine-stop"
+description = "Allows stopping the gateway engine"
+commands.allow = ["engine_stop"]
+
+[[permission]]
+identifier = "allow-engine-restart"
+description = "Allows restarting the gateway engine"
+commands.allow = ["engine_restart"]
+
+[[permission]]
+identifier = "allow-engine-gateway-config"
+description = "Allows reading the gateway configuration"
+commands.allow = ["engine_gateway_config"]
+
+[[permission]]
+identifier = "allow-local-read-tree"
+description = "Allows reading the file tree of a local directory"
+commands.allow = ["local_read_tree"]
+
+[[permission]]
+identifier = "allow-local-read-file"
+description = "Allows reading a local file as text"
+commands.allow = ["local_read_file"]
+
+[[permission]]
+identifier = "allow-local-read-file-base64"
+description = "Allows reading a local file as base64"
+commands.allow = ["local_read_file_base64"]
+
+[[permission]]
+identifier = "allow-local-write-file"
+description = "Allows writing content to a local file"
+commands.allow = ["local_write_file"]
+
+[[permission]]
+identifier = "allow-local-git-info"
+description = "Allows reading git repo info (branch, status)"
+commands.allow = ["local_git_info"]
+
+[[permission]]
+identifier = "allow-local-git-diff"
+description = "Allows reading git diff for a file"
+commands.allow = ["local_git_diff"]
+
+[[permission]]
+identifier = "allow-local-git-commit"
+description = "Allows committing files via git"
+commands.allow = ["local_git_commit"]
+
+[[permission]]
+identifier = "allow-local-git-branches"
+description = "Allows listing git branches"
+commands.allow = ["local_git_branches"]
+
+[[permission]]
+identifier = "allow-local-git-checkout"
+description = "Allows checking out a git branch"
+commands.allow = ["local_git_checkout"]

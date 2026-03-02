@@ -284,9 +284,17 @@ export function LocalProvider({ children }: { children: ReactNode }) {
 
   const switchBranch = useCallback(async (branch: string) => {
     if (!rootPath) return
-    const result = await tauriInvoke<string>('local_git_checkout', { root: rootPath, branch })
-    if (result !== null) {
-      await loadTreeTauri(rootPath)
+    try {
+      const result = await tauriInvoke<string>('local_git_checkout', { root: rootPath, branch })
+      if (result !== null) {
+        await loadTreeTauri(rootPath)
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('Branch switch failed:', msg)
+      alert(msg.includes('overwritten by checkout')
+        ? 'Commit or stash your changes before switching branches.'
+        : `Branch switch failed: ${msg}`)
     }
   }, [rootPath, loadTreeTauri])
 
