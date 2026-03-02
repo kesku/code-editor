@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Icon } from '@iconify/react'
 import { useGateway } from '@/context/gateway-context'
 import { useRepo } from '@/context/repo-context'
-import { useEditor } from '@/context/editor-context'
+import { useEditor, detectFileKind, getMimeType } from '@/context/editor-context'
 import { useLocal } from '@/context/local-context'
 import { useView, type ViewId } from '@/context/view-context'
 import { useLayout } from '@/context/layout-context'
@@ -162,7 +162,7 @@ export default function EditorLayout() {
   const { repo, setRepo } = useRepo()
   const local = useLocal()
   const { files, activeFile, openFile, setActiveFile, markClean, updateFileContent } = useEditor()
-  const { localMode, readFile: localReadFile, writeFile: localWriteFile, rootPath: localRootPath, gitInfo, openFolder: localOpenFolder, setRootPath: localSetRootPath, commitFiles: localCommitFiles } = local
+  const { localMode, readFile: localReadFile, readFileBase64: localReadFileBase64, writeFile: localWriteFile, rootPath: localRootPath, gitInfo, openFolder: localOpenFolder, setRootPath: localSetRootPath, commitFiles: localCommitFiles } = local
   const { activeView, setView, direction } = useView()
   const layout = useLayout()
   const sidebarCollapsed = !layout.isVisible('sidebar')
@@ -322,11 +322,21 @@ export default function EditorLayout() {
         return
       }
 
+      const fileKind = detectFileKind(path)
+      const isBinary = fileKind !== 'text'
+
       // Local mode — read from filesystem
       if (localMode && localReadFile) {
         try {
-          const content = await localReadFile(path)
-          openFile(path, content, '')
+          if (isBinary && localReadFileBase64) {
+            const base64 = await localReadFileBase64(path)
+            const mime = getMimeType(path)
+            const dataUrl = `data:${mime};base64,${base64}`
+            openFile(path, dataUrl, '', { kind: fileKind, mimeType: mime })
+          } else {
+            const content = await localReadFile(path)
+            openFile(path, content, '')
+          }
           setView('editor')
         } catch (err) {
           console.error('Failed to read local file:', path, err)
@@ -338,7 +348,13 @@ export default function EditorLayout() {
       if (repo) {
         try {
           const result = await fetchFileContents(repo.fullName, path, repo.branch)
-          openFile(path, result.content, result.sha ?? sha ?? '')
+          if (isBinary && result.rawBase64) {
+            const mime = getMimeType(path)
+            const dataUrl = `data:${mime};base64,${result.rawBase64}`
+            openFile(path, dataUrl, result.sha ?? sha ?? '', { kind: fileKind, mimeType: mime })
+          } else {
+            openFile(path, result.content, result.sha ?? sha ?? '')
+          }
           setView('editor')
         } catch (err) {
           console.error('Failed to open file:', path, err)
@@ -347,7 +363,7 @@ export default function EditorLayout() {
     }
     window.addEventListener('file-select', handler)
     return () => window.removeEventListener('file-select', handler)
-  }, [repo, files, openFile, setActiveFile, setView, localMode, localReadFile])
+  }, [repo, files, openFile, setActiveFile, setView, localMode, localReadFile, localReadFileBase64])
 
   // ─── Commit handler ────────────────────────────────────
   useEffect(() => {

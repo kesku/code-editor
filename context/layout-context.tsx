@@ -92,16 +92,19 @@ function layoutReducer(state: LayoutState, action: LayoutAction): LayoutState {
       }
     }
     case 'SHOW':
+      if (state.panels[action.panel].visible) return state
       return {
         ...state,
         panels: { ...state.panels, [action.panel]: { ...state.panels[action.panel], visible: true } },
       }
     case 'HIDE':
+      if (!state.panels[action.panel].visible) return state
       return {
         ...state,
         panels: { ...state.panels, [action.panel]: { ...state.panels[action.panel], visible: false } },
       }
     case 'SET_VISIBLE':
+      if (state.panels[action.panel].visible === action.visible) return state
       return {
         ...state,
         panels: { ...state.panels, [action.panel]: { ...state.panels[action.panel], visible: action.visible } },
@@ -114,6 +117,7 @@ function layoutReducer(state: LayoutState, action: LayoutAction): LayoutState {
       }
     }
     case 'SET_EDITOR_COLLAPSED':
+      if (state.editorCollapsed === action.collapsed) return state
       return { ...state, editorCollapsed: action.collapsed }
     case 'PRESET': {
       const preset = PRESETS[action.preset]

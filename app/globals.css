@@ -1163,11 +1163,6 @@ p { line-height: 1.6; }
 /* ──────────────────────────────────────────────────────────────────
    Streaming & Animation
    ────────────────────────────────────────────────────────────────── */
-@keyframes breathe {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
 @keyframes slideUp {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -1183,7 +1178,6 @@ p { line-height: 1.6; }
   50% { box-shadow: 0 0 12px 2px color-mix(in srgb, var(--brand) 15%, transparent); }
 }
 
-.animate-breathe { animation: breathe 2s ease-in-out infinite; }
 .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
 .animate-line-flash { animation: fadeInLine 0.8s ease-out forwards; }
 .animate-glow { animation: pulseGlow 2s ease-in-out infinite; }

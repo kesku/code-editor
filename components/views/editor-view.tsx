@@ -45,20 +45,24 @@ export function EditorView() {
   const chatResize = usePanelResize('chat')
 
   // Auto-expand editor when a file is opened
+  const { setEditorCollapsed } = layout
   useEffect(() => {
-    if (files.length > 0 || activeFile) layout.setEditorCollapsed(false)
-  }, [files.length, activeFile, layout])
+    if (files.length > 0 || activeFile) setEditorCollapsed(false)
+  }, [files.length, activeFile, setEditorCollapsed])
 
   // ⌘B toggle tree, ⌘I toggle chat, ⌘E toggle editor collapse
+  const { toggle } = layout
+  const editorCollapsedRef = useRef(editorCollapsed)
+  editorCollapsedRef.current = editorCollapsed
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); layout.toggle('tree') }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'i' && !e.shiftKey) { e.preventDefault(); layout.toggle('chat') }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey) { e.preventDefault(); layout.setEditorCollapsed(!editorCollapsed) }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') { e.preventDefault(); toggle('tree') }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'i' && !e.shiftKey) { e.preventDefault(); toggle('chat') }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e' && !e.shiftKey) { e.preventDefault(); setEditorCollapsed(!editorCollapsedRef.current) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [layout, editorCollapsed])
+  }, [toggle, setEditorCollapsed])
 
   // Command palette events & open-side-chat are now handled by LayoutContext's event bridge
 

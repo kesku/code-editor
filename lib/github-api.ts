@@ -47,6 +47,7 @@ export interface FileContent {
   encoding: string
   size: number
   download_url?: string
+  rawBase64?: string
 }
 
 export interface Branch {
@@ -144,12 +145,14 @@ export async function fetchFileContents(
     download_url?: string
   }
 
+  const cleanBase64 = data.content.replace(/\n/g, '')
   return {
-    content: data.encoding === 'base64' ? atob(data.content.replace(/\n/g, '')) : data.content,
+    content: data.encoding === 'base64' ? atob(cleanBase64) : data.content,
     sha: data.sha,
     encoding: data.encoding,
     size: data.size,
     download_url: data.download_url,
+    rawBase64: data.encoding === 'base64' ? cleanBase64 : undefined,
   }
 }
 

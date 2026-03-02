@@ -49,7 +49,7 @@ function detectLanguage(path: string): string {
   return map[ext] ?? 'plaintext'
 }
 
-function detectFileKind(path: string): OpenFileKind {
+export function detectFileKind(path: string): OpenFileKind {
   const ext = path.split('.').pop()?.toLowerCase() ?? ''
   if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'heic', 'heif', 'tif', 'tiff', 'ico'].includes(ext)) {
     return 'image'
@@ -61,6 +61,22 @@ function detectFileKind(path: string): OpenFileKind {
     return 'audio'
   }
   return 'text'
+}
+
+const MIME_MAP: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', avif: 'image/avif',
+  heic: 'image/heic', heif: 'image/heif', tif: 'image/tiff', tiff: 'image/tiff',
+  ico: 'image/x-icon',
+  mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime',
+  m4v: 'video/x-m4v', avi: 'video/x-msvideo', mkv: 'video/x-matroska',
+  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+  aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/opus',
+}
+
+export function getMimeType(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  return MIME_MAP[ext] ?? 'application/octet-stream'
 }
 
 export function EditorProvider({ children }: { children: ReactNode }) {

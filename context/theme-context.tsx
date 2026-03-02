@@ -24,7 +24,7 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: 'vintage-paper', label: 'Vintage Paper', color: '#8b5e3c', group: 'tweakcn' },
   { id: 'voodoo', label: 'VooDoo', color: '#8b5cf6', group: 'core' },
   { id: 'cybernord', label: 'CyberNord', color: '#00ff41', group: 'tweakcn' },
-  { id: 'trans', label: 'PrettyyPride', color: '#F5A9B8', group: 'core' },
+  { id: 'prettypink', label: 'PrettyPink', color: '#F5A9B8', group: 'core' },
 ]
 
 interface ThemeContextValue {
