@@ -40,6 +40,7 @@
     "allow-local-git-remote-url",
     "allow-local-git-push",
     "allow-local-git-log",
+    "allow-local-git-has-upstream",
     "allow-local-git-ahead-behind"
   ]
 }

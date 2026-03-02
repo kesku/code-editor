@@ -3835,3 +3835,11 @@ p { line-height: 1.6; }
   background: #d9f0e0;
   color: #15803d;
 }
+
+/* Grid card text placeholder */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-disabled);
+  pointer-events: none;
+  font-style: italic;
+}

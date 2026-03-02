@@ -202,6 +202,7 @@ pub fn run() {
             local_fs::local_git_remote_url,
             local_fs::local_git_push,
             local_fs::local_git_log,
+            local_fs::local_git_has_upstream,
             local_fs::local_git_ahead_behind,
         ])
         .run(tauri::generate_context!())

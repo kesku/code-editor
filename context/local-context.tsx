@@ -13,6 +13,8 @@ interface FileEntry {
 interface GitFileStatus {
   path: string
   status: string
+  index_status: string
+  worktree_status: string
 }
 
 interface GitInfo {
@@ -41,8 +43,9 @@ interface LocalContextValue {
   writeFile: (path: string, content: string) => Promise<void>
   refresh: () => Promise<void>
   commitFiles: (message: string, paths: string[]) => Promise<string>
-  getDiff: (path: string) => Promise<string>
+  getDiff: (path: string, staged?: boolean) => Promise<string>
   unstageFiles: (paths: string[]) => Promise<void>
+  hasUpstream: () => Promise<boolean>
   undoLastCommit: () => Promise<void>
   branches: string[]
   switchBranch: (branch: string) => Promise<void>
@@ -309,9 +312,9 @@ export function LocalProvider({ children }: { children: ReactNode }) {
     return result ?? 'Committed'
   }, [desktop, rootPath, refresh])
 
-  const getDiff = useCallback(async (path: string): Promise<string> => {
+  const getDiff = useCallback(async (path: string, staged?: boolean): Promise<string> => {
     if (!desktop || !rootPath) return ''
-    const diff = await tauriInvoke<string>('local_git_diff', { root: rootPath, path })
+    const diff = await tauriInvoke<string>('local_git_diff', { root: rootPath, path, staged: staged ?? false })
     return diff ?? ''
   }, [desktop, rootPath])
 
@@ -327,15 +330,21 @@ export function LocalProvider({ children }: { children: ReactNode }) {
     await refresh()
   }, [desktop, rootPath, refresh])
 
+  const hasUpstream = useCallback(async (): Promise<boolean> => {
+    if (!desktop || !rootPath || !gitInfo?.branch) return false
+    const result = await tauriInvoke<boolean>('local_git_has_upstream', { root: rootPath, branch: gitInfo.branch })
+    return result ?? false
+  }, [desktop, rootPath, gitInfo])
+
   const push = useCallback(async (branch?: string): Promise<string> => {
     if (!desktop || !rootPath) throw new Error('Push requires the desktop app')
     const br = branch || gitInfo?.branch
     if (!br) throw new Error('No branch to push')
-    const hasUpstream = aheadBehind.ahead > 0 || aheadBehind.behind > 0
-    const result = await tauriInvoke<string>('local_git_push', { root: rootPath, branch: br, setUpstream: !hasUpstream })
+    const upstream = await hasUpstream()
+    const result = await tauriInvoke<string>('local_git_push', { root: rootPath, branch: br, setUpstream: !upstream })
     await refresh()
     return result ?? 'Pushed'
-  }, [desktop, rootPath, gitInfo, aheadBehind, refresh])
+  }, [desktop, rootPath, gitInfo, hasUpstream, refresh])
 
   const gitLog = useCallback(async (count = 20): Promise<GitLogEntry[]> => {
     if (!desktop || !rootPath) return []
@@ -357,11 +366,11 @@ export function LocalProvider({ children }: { children: ReactNode }) {
     available: true, isWebFS, remoteRepo, aheadBehind,
     openFolder, setRootPath, exitLocalMode,
     readFile, readFileBase64, writeFile, refresh, commitFiles, getDiff,
-    unstageFiles, undoLastCommit, switchBranch, push, gitLog, refreshAheadBehind,
+    unstageFiles, undoLastCommit, switchBranch, push, gitLog, refreshAheadBehind, hasUpstream,
   }), [localMode, rootPath, localTree, gitInfo, branches, isWebFS, remoteRepo, aheadBehind,
     openFolder, setRootPath, exitLocalMode,
     readFile, readFileBase64, writeFile, refresh, commitFiles, getDiff,
-    unstageFiles, undoLastCommit, switchBranch, push, gitLog, refreshAheadBehind])
+    unstageFiles, undoLastCommit, switchBranch, push, gitLog, refreshAheadBehind, hasUpstream])
 
   return (
     <LocalContext.Provider value={value}>

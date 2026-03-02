@@ -116,6 +116,11 @@ description = "Allows reading git log entries"
 commands.allow = ["local_git_log"]
 
 [[permission]]
+identifier = "allow-local-git-has-upstream"
+description = "Allows checking if a branch has a remote tracking upstream"
+commands.allow = ["local_git_has_upstream"]
+
+[[permission]]
 identifier = "allow-local-git-ahead-behind"
 description = "Allows checking commits ahead/behind remote"
 commands.allow = ["local_git_ahead_behind"]

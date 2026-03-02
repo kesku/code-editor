@@ -34,6 +34,7 @@ const TerminalPanel = dynamic(() => import('@/components/terminal-panel').then(m
 const PreviewPanel = dynamic(() => import('@/components/preview/preview-panel').then(m => ({ default: m.PreviewPanel })), { ssr: false })
 const ComponentIsolatorListener = dynamic(() => import('@/components/preview/component-isolator').then(m => ({ default: m.ComponentIsolatorListener })), { ssr: false })
 const WorkflowView = dynamic(() => import('@/components/workflows/workflow-view').then(m => ({ default: m.WorkflowView })), { ssr: false })
+const GridView = dynamic(() => import('@/components/views/grid-view').then(m => ({ default: m.GridView })), { ssr: false })
 const PipWindow = dynamic(() => import('@/components/preview/pip-window').then(m => ({ default: m.PipWindow })), { ssr: false })
 
 const VIEW_ICONS: Record<ViewId, { icon: string; label: string }> = {
@@ -41,13 +42,14 @@ const VIEW_ICONS: Record<ViewId, { icon: string; label: string }> = {
   editor: { icon: 'lucide:code-2', label: 'Editor' },
   preview: { icon: 'lucide:eye', label: 'Preview' },
   workflows: { icon: 'lucide:workflow', label: 'Workflows' },
+  grid: { icon: 'lucide:layout-grid', label: 'Grid' },
   diff: { icon: 'lucide:git-compare', label: 'Diff' },
   git: { icon: 'lucide:git-branch', label: 'Git' },
   prs: { icon: 'lucide:git-pull-request', label: 'PRs' },
   settings: { icon: 'lucide:settings', label: 'Settings' },
 }
 
-const VISIBLE_VIEWS: ViewId[] = ['chat', 'editor', 'preview', 'workflows', 'git', 'prs']
+const VISIBLE_VIEWS: ViewId[] = ['chat', 'editor', 'preview', 'workflows', 'grid', 'git', 'prs']
 
 export default function EditorLayout() {
   const { status } = useGateway()
@@ -154,10 +156,10 @@ export default function EditorLayout() {
         setQuickOpenVisible(false); setGlobalSearchVisible(false)
         setCommandPaletteVisible(false); setShortcutsVisible(false)
       }
-      // ⌘1-5 — View switching
-      if (meta && e.key >= '1' && e.key <= '5') {
+      // ⌘1-6 — View switching
+      if (meta && e.key >= '1' && e.key <= '6') {
         e.preventDefault()
-        const views: ViewId[] = ['chat', 'editor', 'git', 'prs', 'settings']
+        const views: ViewId[] = ['chat', 'editor', 'grid', 'git', 'prs', 'settings']
         const target = views[parseInt(e.key) - 1]
         setView(target)
         setFlashedTab(target)
@@ -440,6 +442,7 @@ export default function EditorLayout() {
             {activeView === 'editor' && <EditorView />}
             {activeView === 'preview' && <PreviewPanel />}
             {activeView === 'workflows' && <WorkflowView />}
+            {activeView === 'grid' && <GridView />}
             {activeView === 'git' && <GitView />}
             {activeView === 'prs' && <PrView />}
             {activeView === 'settings' && (

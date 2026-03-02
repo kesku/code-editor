@@ -326,7 +326,7 @@ export function PrView() {
     setSelectedPr(null)
     setActiveFile(null)
     setCreateHead(branchName)
-    setCreateBase(branchName === 'main' ? 'main' : 'main')
+    setCreateBase('main')
     setCreateTitle('')
     setCreateBody('')
     setCreateDraft(false)
@@ -350,7 +350,7 @@ export function PrView() {
     )
   }, [prs, search])
 
-  const openCount = useMemo(() => prs.filter(p => p.state === 'open').length, [prs])
+  const openCount = useMemo(() => filter === 'open' ? prs.length : 0, [prs, filter])
 
   const mergeMethodLabel: Record<MergeMethod, string> = {
     merge: 'Create merge commit',

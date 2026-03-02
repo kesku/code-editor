@@ -82,6 +82,8 @@ interface ChangeEntry {
   path: string
   status: string // 'M', 'A', 'D', '??', 'R', 'editor'
   source: 'git' | 'editor'
+  index_status?: string   // first char of porcelain XY (staged state)
+  worktree_status?: string // second char of porcelain XY (working-tree state)
 }
 
 export function GitView() {
@@ -131,11 +133,12 @@ export function GitView() {
   const changeEntries = useMemo<ChangeEntry[]>(() => {
     if (isLocalMode) {
       const gitStatus = local.gitInfo?.status ?? []
-      const editorDirtyPaths = new Set(dirtyFiles.map(f => f.path))
       const entries: ChangeEntry[] = gitStatus.map(s => ({
         path: s.path,
         status: s.status,
         source: 'git' as const,
+        index_status: s.index_status,
+        worktree_status: s.worktree_status,
       }))
       for (const f of dirtyFiles) {
         if (!gitStatus.some(s => s.path === f.path)) {
@@ -147,8 +150,25 @@ export function GitView() {
     return dirtyFiles.map(f => ({ path: f.path, status: 'M', source: 'editor' as const }))
   }, [isLocalMode, local.gitInfo?.status, dirtyFiles])
 
+  const prevPathsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
-    setSelectedFiles(new Set(changeEntries.map(f => f.path)))
+    const currentPaths = new Set(changeEntries.map(f => f.path))
+    const prevPaths = prevPathsRef.current
+    if (prevPaths.size === 0) {
+      setSelectedFiles(currentPaths)
+    } else {
+      setSelectedFiles(prev => {
+        const next = new Set(prev)
+        for (const p of currentPaths) {
+          if (!prevPaths.has(p)) next.add(p)
+        }
+        for (const p of prev) {
+          if (!currentPaths.has(p)) next.delete(p)
+        }
+        return next
+      })
+    }
+    prevPathsRef.current = currentPaths
   }, [changeEntries])
 
   useEffect(() => {
@@ -182,7 +202,11 @@ export function GitView() {
     }
     const entry = changeEntries.find(e => e.path === activeFilePath)
     if (entry?.source === 'git') {
-      local.getDiff(activeFilePath).then(d => setLocalDiffPatch(d || null)).catch(() => setLocalDiffPatch(null))
+      const isStaged = entry.index_status !== ' ' && entry.index_status !== '?'
+      const hasWorktreeChanges = entry.worktree_status !== ' '
+      // Show staged diff if only staged, otherwise working-tree diff
+      const showStaged = isStaged && !hasWorktreeChanges
+      local.getDiff(activeFilePath, showStaged).then(d => setLocalDiffPatch(d || null)).catch(() => setLocalDiffPatch(null))
     } else {
       setLocalDiffPatch(null)
     }
@@ -282,18 +306,23 @@ export function GitView() {
     }
   }, [branchName, isLocalMode, local])
 
+  const [unstageError, setUnstageError] = useState<string | null>(null)
+
   const handleUnstage = useCallback(async () => {
     if (!isLocalMode) return
     const paths = Array.from(selectedFiles).filter(p => {
       const entry = changeEntries.find(e => e.path === p)
-      return entry?.source === 'git' && entry.status !== '??'
+      return entry?.source === 'git' && entry.index_status !== ' ' && entry.index_status !== '?'
     })
     if (paths.length === 0) return
     setUnstaging(true)
+    setUnstageError(null)
     try {
       await local.unstageFiles(paths)
     } catch (err) {
-      console.error('Unstage failed:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      setUnstageError(msg)
+      setTimeout(() => setUnstageError(null), 5000)
     }
     setUnstaging(false)
   }, [isLocalMode, selectedFiles, changeEntries, local])
@@ -332,37 +361,48 @@ export function GitView() {
   const stagedSelectedCount = useMemo(() => {
     return Array.from(selectedFiles).filter(p => {
       const entry = changeEntries.find(e => e.path === p)
-      return entry?.source === 'git' && entry.status !== '??'
+      return entry?.source === 'git' && entry.index_status !== ' ' && entry.index_status !== '?'
     }).length
   }, [selectedFiles, changeEntries])
 
   const loadHistory = useCallback(async () => {
-    if (!repo) return
     setLoadingHistory(true)
     try {
-      const resp = await fetch(`https://api.github.com/repos/${repo.fullName}/commits?sha=${branchName}&per_page=30`, {
-        headers: { ...authHeaders(), Accept: 'application/vnd.github.v3+json' }
-      })
-      if (resp.ok) {
-        const data = await resp.json()
-        setCommits(data.map((c: any) => ({
-          sha: c.sha,
-          shortSha: c.sha.slice(0, 7),
-          message: c.commit?.message?.split('\n')[0] ?? '',
-          author: c.commit?.author?.name ?? 'Unknown',
-          date: new Date(c.commit?.author?.date ?? '').toLocaleDateString()
+      if (isLocalMode) {
+        const entries = await local.gitLog(30)
+        setCommits(entries.map(e => ({
+          sha: e.hash,
+          shortSha: e.hash.slice(0, 7),
+          message: e.message,
+          author: e.author,
+          date: new Date(e.date).toLocaleDateString(),
         })))
+      } else if (repo) {
+        const resp = await fetch(`https://api.github.com/repos/${repo.fullName}/commits?sha=${branchName}&per_page=30`, {
+          headers: { ...authHeaders(), Accept: 'application/vnd.github.v3+json' }
+        })
+        if (resp.ok) {
+          const data = await resp.json()
+          setCommits(data.map((c: any) => ({
+            sha: c.sha,
+            shortSha: c.sha.slice(0, 7),
+            message: c.commit?.message?.split('\n')[0] ?? '',
+            author: c.commit?.author?.name ?? 'Unknown',
+            date: new Date(c.commit?.author?.date ?? '').toLocaleDateString()
+          })))
+        }
       }
     } catch {}
     setLoadingHistory(false)
-  }, [repo, branchName])
+  }, [isLocalMode, local, repo, branchName])
 
   const loadCommitFilesData = useCallback(async (commit: typeof commits[0]) => {
     setSelectedCommit(commit)
     setCommitFilesData([])
     setActiveCommitFile(null)
+    if (!repo?.fullName) return
     try {
-      const resp = await fetch(`https://api.github.com/repos/${repo?.fullName}/commits/${commit.sha}`, {
+      const resp = await fetch(`https://api.github.com/repos/${repo.fullName}/commits/${commit.sha}`, {
         headers: { ...authHeaders(), Accept: 'application/vnd.github.v3+json' }
       })
       if (resp.ok) {
@@ -607,63 +647,110 @@ export function GitView() {
               </div>
             )}
 
+            {unstageError && (
+              <div className="flex items-start gap-1.5 px-3 py-1.5 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--color-deletions)_8%,transparent)]">
+                <Icon icon="lucide:alert-circle" width={11} height={11} className="text-[var(--color-deletions)] shrink-0 mt-0.5" />
+                <span className="text-[10px] text-[var(--color-deletions)] leading-snug">{unstageError}</span>
+                <button onClick={() => setUnstageError(null)} className="ml-auto shrink-0 text-[var(--color-deletions)] hover:opacity-70 cursor-pointer">
+                  <Icon icon="lucide:x" width={10} height={10} />
+                </button>
+              </div>
+            )}
+
             {/* Changed files list */}
             <div className="flex-1 overflow-y-auto">
-              {changeEntries.map(entry => {
-                const fileName = entry.path.split('/').pop() ?? entry.path
-                const dirPath = entry.path.split('/').slice(0, -1).join('/')
-                const statusColor =
-                  entry.status === 'D' ? 'text-[var(--color-deletions)]' :
-                  entry.status === 'A' || entry.status === '??' ? 'text-[var(--color-additions)]' :
-                  'text-[var(--warning,#eab308)]'
-                const statusLabel =
-                  entry.status === 'M' ? 'M' :
-                  entry.status === 'A' ? 'A' :
-                  entry.status === 'D' ? 'D' :
-                  entry.status === '??' ? 'U' :
-                  entry.status === 'R' ? 'R' :
-                  entry.status === 'editor' ? 'E' :
-                  entry.status
-                const statusTitle =
-                  entry.status === 'M' ? 'Modified' :
-                  entry.status === 'A' ? 'Added' :
-                  entry.status === 'D' ? 'Deleted' :
-                  entry.status === '??' ? 'Untracked' :
-                  entry.status === 'R' ? 'Renamed' :
-                  entry.status === 'editor' ? 'Editor changes (unsaved)' :
-                  entry.status
+              {(() => {
+                const stagedEntries = isLocalMode
+                  ? changeEntries.filter(e => e.source === 'git' && e.index_status !== ' ' && e.index_status !== '?')
+                  : []
+                const unstagedEntries = isLocalMode
+                  ? changeEntries.filter(e => e.source === 'editor' || e.index_status === ' ' || e.index_status === '?')
+                  : changeEntries
+
+                const renderEntry = (entry: ChangeEntry) => {
+                  const fileName = entry.path.split('/').pop() ?? entry.path
+                  const dirPath = entry.path.split('/').slice(0, -1).join('/')
+                  const statusColor =
+                    entry.status === 'D' ? 'text-[var(--color-deletions)]' :
+                    entry.status === 'A' || entry.status === '??' ? 'text-[var(--color-additions)]' :
+                    'text-[var(--warning,#eab308)]'
+                  const statusLabel =
+                    entry.status === 'M' ? 'M' :
+                    entry.status === 'A' ? 'A' :
+                    entry.status === 'D' ? 'D' :
+                    entry.status === '??' ? 'U' :
+                    entry.status === 'R' ? 'R' :
+                    entry.status === 'editor' ? 'E' :
+                    entry.status
+                  const statusTitle =
+                    entry.status === 'M' ? 'Modified' :
+                    entry.status === 'A' ? 'Added' :
+                    entry.status === 'D' ? 'Deleted' :
+                    entry.status === '??' ? 'Untracked' :
+                    entry.status === 'R' ? 'Renamed' :
+                    entry.status === 'editor' ? 'Editor changes (unsaved)' :
+                    entry.status
+                  return (
+                    <div
+                      key={entry.path}
+                      onClick={() => setActiveFilePath(entry.path)}
+                      className={`group flex items-center gap-2 h-[30px] px-3 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer ${
+                        activeFilePath === entry.path ? 'bg-[color-mix(in_srgb,var(--brand)_8%,transparent)]' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles.has(entry.path)}
+                        onChange={e => { e.stopPropagation(); toggleFile(entry.path) }}
+                        className="accent-[var(--brand)] w-3 h-3 shrink-0"
+                      />
+                      <Icon icon="lucide:file-code-2" width={12} height={12} className="text-[var(--text-tertiary)] shrink-0" />
+                      <span className="text-[11px] font-mono text-[var(--text-primary)] truncate">{fileName}</span>
+                      {dirPath && (
+                        <span className="text-[10px] text-[var(--text-disabled)] truncate ml-auto shrink-0 font-mono">{dirPath}</span>
+                      )}
+                      <span className={`text-[9px] font-mono font-bold shrink-0 ${statusColor}`} title={statusTitle}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                  )
+                }
+
+                if (changeEntries.length === 0) {
+                  return (
+                    <div className="py-12 text-center">
+                      <Icon icon="lucide:check-circle" width={28} height={28} className="mx-auto mb-2 text-[var(--color-additions)] opacity-40" />
+                      <p className="text-[11px] text-[var(--text-tertiary)]">Working tree clean</p>
+                      <p className="text-[10px] text-[var(--text-disabled)] mt-0.5">No pending changes</p>
+                    </div>
+                  )
+                }
+
                 return (
-                  <div
-                    key={entry.path}
-                    onClick={() => setActiveFilePath(entry.path)}
-                    className={`group flex items-center gap-2 h-[30px] px-3 hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer ${
-                      activeFilePath === entry.path ? 'bg-[color-mix(in_srgb,var(--brand)_8%,transparent)]' : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedFiles.has(entry.path)}
-                      onChange={e => { e.stopPropagation(); toggleFile(entry.path) }}
-                      className="accent-[var(--brand)] w-3 h-3 shrink-0"
-                    />
-                    <Icon icon="lucide:file-code-2" width={12} height={12} className="text-[var(--text-tertiary)] shrink-0" />
-                    <span className="text-[11px] font-mono text-[var(--text-primary)] truncate">{fileName}</span>
-                    {dirPath && (
-                      <span className="text-[10px] text-[var(--text-disabled)] truncate ml-auto shrink-0 font-mono">{dirPath}</span>
+                  <>
+                    {isLocalMode && stagedEntries.length > 0 && (
+                      <>
+                        <div className="flex items-center h-[24px] px-3 bg-[var(--bg-subtle)] border-b border-[var(--border)]">
+                          <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Staged Changes</span>
+                          <span className="ml-1.5 px-1 min-w-[14px] text-center rounded-full bg-[var(--color-additions)] text-white text-[8px] font-bold leading-[14px]">{stagedEntries.length}</span>
+                        </div>
+                        {stagedEntries.map(renderEntry)}
+                      </>
                     )}
-                    <span className={`text-[9px] font-mono font-bold shrink-0 ${statusColor}`} title={statusTitle}>
-                      {statusLabel}
-                    </span>
-                  </div>
+                    {(isLocalMode ? unstagedEntries.length > 0 : true) && (
+                      <>
+                        {isLocalMode && stagedEntries.length > 0 && (
+                          <div className="flex items-center h-[24px] px-3 bg-[var(--bg-subtle)] border-b border-[var(--border)]">
+                            <span className="text-[10px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Changes</span>
+                            <span className="ml-1.5 px-1 min-w-[14px] text-center rounded-full bg-[var(--warning,#eab308)] text-white text-[8px] font-bold leading-[14px]">{unstagedEntries.length}</span>
+                          </div>
+                        )}
+                        {unstagedEntries.map(renderEntry)}
+                      </>
+                    )}
+                  </>
                 )
-              })}
-              {changeEntries.length === 0 && (
-                <div className="py-12 text-center">
-                  <Icon icon="lucide:check-circle" width={28} height={28} className="mx-auto mb-2 text-[var(--color-additions)] opacity-40" />
-                  <p className="text-[11px] text-[var(--text-tertiary)]">Working tree clean</p>
-                  <p className="text-[10px] text-[var(--text-disabled)] mt-0.5">No pending changes</p>
-                </div>
-              )}
+              })()}
             </div>
 
             {/* Commit area */}

@@ -21,7 +21,9 @@ pub struct GitInfo {
 #[derive(Clone, Serialize)]
 pub struct GitFileStatus {
     pub path: String,
-    pub status: String,  // "M", "A", "D", "??"
+    pub status: String,          // trimmed combined code for backward compat, e.g. "M", "??"
+    pub index_status: String,    // first char of porcelain XY (staged state)
+    pub worktree_status: String, // second char of porcelain XY (working-tree state)
 }
 
 fn should_ignore(name: &str) -> bool {
@@ -151,9 +153,16 @@ pub fn local_git_info(root: String) -> Result<GitInfo, String> {
         .lines()
         .filter(|l| !l.is_empty())
         .map(|line| {
-            let status_code = line.get(0..2).unwrap_or("??").trim().to_string();
+            let xy = line.get(0..2).unwrap_or("??");
+            let idx = xy.chars().nth(0).unwrap_or('?').to_string();
+            let wt = xy.chars().nth(1).unwrap_or('?').to_string();
             let file_path = line.get(3..).unwrap_or("").to_string();
-            GitFileStatus { path: file_path, status: status_code }
+            GitFileStatus {
+                path: file_path,
+                status: xy.trim().to_string(),
+                index_status: idx,
+                worktree_status: wt,
+            }
         })
         .collect();
 
@@ -161,8 +170,12 @@ pub fn local_git_info(root: String) -> Result<GitInfo, String> {
 }
 
 #[tauri::command]
-pub fn local_git_diff(root: String, path: String) -> Result<String, String> {
-    run_git(&root, &["diff", "--", &path])
+pub fn local_git_diff(root: String, path: String, staged: Option<bool>) -> Result<String, String> {
+    if staged.unwrap_or(false) {
+        run_git(&root, &["diff", "--cached", "--", &path])
+    } else {
+        run_git(&root, &["diff", "--", &path])
+    }
 }
 
 #[tauri::command]
@@ -270,6 +283,14 @@ pub fn local_git_log(root: String, count: u32) -> Result<Vec<GitLogEntry>, Strin
         }
     }
     Ok(entries)
+}
+
+#[tauri::command]
+pub fn local_git_has_upstream(root: String, branch: String) -> Result<bool, String> {
+    match run_git(&root, &["rev-parse", "--abbrev-ref", &format!("{}@{{upstream}}", branch)]) {
+        Ok(_) => Ok(true),
+        Err(_) => Ok(false),
+    }
 }
 
 #[tauri::command]
