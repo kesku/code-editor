@@ -644,11 +644,12 @@ export function AgentPanel() {
   const appendMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => {
       const next = [...prev, msg]
-      // Auto-title from first user message
       if (msg.role === 'user' && next.filter(m => m.role === 'user').length === 1) {
-        window.dispatchEvent(new CustomEvent('chat-session-update', {
-          detail: { id: chatId, title: msg.content.slice(0, 40), preview: msg.content.slice(0, 80), timestamp: Date.now() }
-        }))
+        queueMicrotask(() => {
+          window.dispatchEvent(new CustomEvent('chat-session-update', {
+            detail: { id: chatId, title: msg.content.slice(0, 40), preview: msg.content.slice(0, 80), timestamp: Date.now() }
+          }))
+        })
       }
       return next
     })

@@ -175,22 +175,36 @@ export function CodeEditor() {
     let mounted = true
 
     const initMonaco = async () => {
+      const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs'
+      const workerUrls: Record<string, string> = {
+        editor: `${base}/editor/editor.worker.js`,
+        json: `${base}/language/json/json.worker.js`,
+        css: `${base}/language/css/css.worker.js`,
+        html: `${base}/language/html/html.worker.js`,
+        typescript: `${base}/language/typescript/ts.worker.js`,
+      }
+
+      const workerBlobs = new Map<string, string>()
+      await Promise.all(
+        Object.entries(workerUrls).map(async ([key, url]) => {
+          const res = await fetch(url)
+          const text = await res.text()
+          workerBlobs.set(key, URL.createObjectURL(
+            new Blob([text], { type: 'application/javascript' })
+          ))
+        })
+      )
+
       self.MonacoEnvironment = {
         getWorker(_workerId: string, label: string) {
-          const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs'
-          const workerMap: Record<string, string> = {
-            json: `${base}/language/json/json.worker.js`,
-            css: `${base}/language/css/css.worker.js`,
-            scss: `${base}/language/css/css.worker.js`,
-            less: `${base}/language/css/css.worker.js`,
-            html: `${base}/language/html/html.worker.js`,
-            handlebars: `${base}/language/html/html.worker.js`,
-            razor: `${base}/language/html/html.worker.js`,
-            typescript: `${base}/language/typescript/ts.worker.js`,
-            javascript: `${base}/language/typescript/ts.worker.js`,
+          const labelMap: Record<string, string> = {
+            json: 'json',
+            css: 'css', scss: 'css', less: 'css',
+            html: 'html', handlebars: 'html', razor: 'html',
+            typescript: 'typescript', javascript: 'typescript',
           }
-          const url = workerMap[label] || `${base}/editor/editor.worker.js`
-          return new Worker(url)
+          const blobUrl = workerBlobs.get(labelMap[label] || 'editor')!
+          return new Worker(blobUrl)
         },
       }
 
