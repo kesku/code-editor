@@ -1598,9 +1598,9 @@ p { line-height: 1.6; }
 .folder-tab {
   position: relative;
   z-index: 1;
-  padding: 5px 14px 6px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 7px 18px 8px;
+  font-size: 13px;
+  font-weight: 600;
   border: none;
   background: transparent;
   cursor: pointer;
@@ -1615,7 +1615,7 @@ p { line-height: 1.6; }
   position: absolute;
   inset: 0;
   z-index: -1;
-  border-radius: 8px 8px 0 0;
+  border-radius: 10px 10px 0 0;
   background: transparent;
   border: 1px solid transparent;
   border-bottom: none;
@@ -1695,7 +1695,7 @@ p { line-height: 1.6; }
   position: relative;
   display: flex;
   align-items: flex-end;
-  gap: 2px;
+  gap: 3px;
   padding-top: 2px;
 }
 
@@ -2767,13 +2767,13 @@ p { line-height: 1.6; }
 
 /* ─── Vercel ───────────────────────────────────────────────── */
 .dark[data-theme="vercel"] {
-  /* Ghost (OpenAI/Codex-inspired): softer charcoal, not pure black */
-  --bg: #111315;
-  --bg-elevated: #16191d;
-  --bg-subtle: #1b1f23;
-  --bg-secondary: #14171b;
-  --bg-tertiary: #23282f;
-  --sidebar-bg: #0f1216;
+  /* Ghost (OpenAI-inspired): #181818 base, #261B1C sidebar — very transparent */
+  --bg: rgba(24, 24, 24, 0.65);
+  --bg-elevated: rgba(28, 28, 28, 0.60);
+  --bg-subtle: rgba(34, 34, 34, 0.55);
+  --bg-secondary: rgba(26, 26, 26, 0.60);
+  --bg-tertiary: rgba(40, 40, 40, 0.55);
+  --sidebar-bg: rgba(38, 27, 28, 0.55);
   --foreground: #e8eaed;
   --subtle: #7f8691;
   --font-sans: 'Geist', Inter, system-ui, sans-serif;
@@ -2793,44 +2793,44 @@ p { line-height: 1.6; }
   --text-tertiary: #6b7280;
   --text-disabled: #4b5563;
 
-  --border: #2a3038;
-  --border-hover: #3a424e;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.12);
   --border-focus: #9ca3af;
 
-  --glass-bg: rgba(22, 25, 29, 0.94);
-  --glass-bg-hover: var(--bg-subtle);
-  --glass-bg-elevated: var(--bg-subtle);
-  --glass-border: var(--border);
+  --glass-bg: rgba(24, 24, 24, 0.45);
+  --glass-bg-hover: rgba(34, 34, 34, 0.50);
+  --glass-bg-elevated: rgba(30, 30, 30, 0.50);
+  --glass-border: rgba(255, 255, 255, 0.06);
   --glass-border-hover: rgba(255, 255, 255, 0.10);
-  --glass-shadow: rgba(0, 0, 0, 0.52);
+  --glass-shadow: rgba(0, 0, 0, 0.35);
   --brand-glow: rgba(255, 255, 255, 0.07);
   --brand-glow-subtle: rgba(255, 255, 255, 0.03);
   --brand-deep: #9ca3af;
   --brand-chat: #d1d5db;
-  --brand-contrast: #111315;
+  --brand-contrast: #181818;
 
-  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.42);
-  --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.46);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.46), 0 1px 2px rgba(0, 0, 0, 0.34);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.48);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.50);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.56), 0 4px 12px rgba(0, 0, 0, 0.40);
-  --shadow-2xl: 0 24px 56px rgba(0, 0, 0, 0.62), 0 8px 20px rgba(0, 0, 0, 0.44);
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.32);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.34), 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.38);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.42), 0 4px 12px rgba(0, 0, 0, 0.28);
+  --shadow-2xl: 0 24px 56px rgba(0, 0, 0, 0.48), 0 8px 20px rgba(0, 0, 0, 0.32);
 
   --kn-claw: var(--brand);
   --vscode-text: var(--text-primary);
   --vscode-subtle: var(--text-tertiary);
   --vscode-muted: var(--text-secondary);
 
-  --overlay: rgba(15, 18, 22, 0.62);
+  --overlay: rgba(15, 18, 22, 0.45);
   --logo-filter: none;
 
-  --scrollbar-thumb: #353c46;
-  --scrollbar-thumb-hover: #485261;
-  --header-glass-bg: rgba(17, 19, 21, 0.92);
-  --shimmer-from: #15191d;
-  --shimmer-via: #1d2228;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.10);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.16);
+  --header-glass-bg: rgba(24, 24, 24, 0.50);
+  --shimmer-from: rgba(24, 24, 24, 0.40);
+  --shimmer-via: rgba(34, 34, 34, 0.45);
 
   --color-additions: #3b82f6;
   --color-deletions: #ef4444;

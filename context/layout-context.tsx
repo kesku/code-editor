@@ -5,7 +5,7 @@ import { createContext, useContext, useReducer, useCallback, useEffect, useMemo,
 // ─── Panel Definitions ──────────────────────────────────
 // Add a new panel here → it automatically gets toggle, resize, persistence, presets
 
-export type PanelId = 'sidebar' | 'tree' | 'chat' | 'engine' | 'terminal'
+export type PanelId = 'sidebar' | 'tree' | 'chat' | 'engine' | 'terminal' | 'plugins'
 
 export type PanelAxis = 'horizontal' | 'vertical'
 
@@ -27,11 +27,12 @@ interface PanelDef {
 }
 
 export const PANEL_DEFS: Record<PanelId, PanelDef> = {
-  sidebar: { key: 'sidebar-collapsed', defaultVisible: true, defaultSize: 0, minSize: 0, maxSize: 0, axis: 'horizontal', resizable: false },
+  sidebar: { key: 'sidebar-collapsed', defaultVisible: true, defaultSize: 260, minSize: 200, maxSize: 420, axis: 'horizontal', resizable: true },
   tree:    { key: 'tree',    defaultVisible: false, defaultSize: 220, minSize: 160, maxSize: 400, axis: 'horizontal', resizable: true },
   chat:    { key: 'chat',    defaultVisible: true,  defaultSize: 360, minSize: 280, maxSize: 600, axis: 'horizontal', resizable: true },
   engine:  { key: 'engine',  defaultVisible: false, defaultSize: 240, minSize: 120, maxSize: 500, axis: 'vertical',   resizable: true },
   terminal:{ key: 'terminal',defaultVisible: false, defaultSize: 240, minSize: 100, maxSize: 500, axis: 'vertical',   resizable: true },
+  plugins: { key: 'plugins', defaultVisible: true,  defaultSize: 220, minSize: 160, maxSize: 400, axis: 'horizontal', resizable: true },
 }
 
 const PANEL_IDS = Object.keys(PANEL_DEFS) as PanelId[]
@@ -178,10 +179,19 @@ function hydrateFromStorage(): Partial<LayoutState> {
   for (const id of PANEL_IDS) {
     const def = PANEL_DEFS[id]
     try {
-      // Sidebar uses inverted key (sidebar-collapsed)
       if (id === 'sidebar') {
+        const ps: Partial<PanelState> = {}
         const raw = localStorage.getItem('code-editor:sidebar-collapsed')
-        if (raw !== null) panels[id] = { visible: raw !== 'true' }
+        if (raw !== null) ps.visible = raw !== 'true'
+        // Migrate legacy sidebar width key
+        const legacyW = localStorage.getItem('code-editor:sidebar-width')
+        const sizeKey = `${STORAGE_PREFIX}${def.key}-w`
+        const sizeRaw = localStorage.getItem(sizeKey) ?? legacyW
+        if (sizeRaw !== null) {
+          const n = parseInt(sizeRaw)
+          if (!isNaN(n)) ps.size = clampSize(id, n)
+        }
+        if (Object.keys(ps).length > 0) panels[id] = ps
       } else {
         const visKey = `${STORAGE_PREFIX}${def.key}-visible`
         const sizeKey = `${STORAGE_PREFIX}${def.key}-w`
@@ -227,6 +237,7 @@ function persistToStorage(state: LayoutState) {
       const ps = state.panels[id]
       if (id === 'sidebar') {
         localStorage.setItem('code-editor:sidebar-collapsed', String(!ps.visible))
+        localStorage.setItem(`${STORAGE_PREFIX}${def.key}-w`, String(ps.size))
       } else {
         localStorage.setItem(`${STORAGE_PREFIX}${def.key}-visible`, String(ps.visible))
         if (def.resizable) {
@@ -368,11 +379,10 @@ export function usePanelResize(panel: PanelId) {
     const onMove = (ev: MouseEvent) => {
       const currentPos = def.axis === 'horizontal' ? ev.clientX : ev.clientY
       // For right-side panels (chat), invert the delta
-      const delta = panel === 'chat'
+      const invertDelta = panel === 'chat' || panel === 'terminal' || panel === 'plugins'
+      const delta = invertDelta
         ? startPos - currentPos
-        : panel === 'terminal'
-          ? startPos - currentPos
-          : currentPos - startPos
+        : currentPos - startPos
       resize(panel, startSize + delta)
     }
     const onUp = () => {

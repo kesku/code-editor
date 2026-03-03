@@ -9,7 +9,7 @@ import { useRepo } from '@/context/repo-context'
 import { useEditor, detectFileKind, getMimeType } from '@/context/editor-context'
 import { useLocal } from '@/context/local-context'
 import { useView, type ViewId } from '@/context/view-context'
-import { useLayout } from '@/context/layout-context'
+import { useLayout, usePanelResize } from '@/context/layout-context'
 import { WorkspaceSidebar } from '@/components/workspace-sidebar'
 import { isTauri } from '@/lib/tauri'
 import { fetchFileContentsByName as fetchFileContents, commitFilesByName as commitFiles } from '@/lib/github-api'
@@ -127,6 +127,9 @@ function ActivityPulseRing({ status, agentActive }: { status: string; agentActiv
 
 function SidebarPluginSlot() {
   const { slots } = usePlugins()
+  const layout = useLayout()
+  const pluginsResize = usePanelResize('plugins')
+  const pluginsWidth = layout.getSize('plugins')
   const entries = slots.sidebar
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('ce:sidebar-plugins-collapsed') === 'true' } catch { return false }
@@ -134,7 +137,10 @@ function SidebarPluginSlot() {
   useEffect(() => { try { localStorage.setItem('ce:sidebar-plugins-collapsed', String(collapsed)) } catch {} }, [collapsed])
   if (entries.length === 0) return null
   return (
-    <div className={`shrink-0 flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden transition-[width] duration-200 ${collapsed ? 'w-[48px]' : 'w-[220px]'}`}>
+    <div
+      className={`relative shrink-0 flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden transition-[width] duration-200 ${collapsed ? 'w-[48px]' : ''}`}
+      style={collapsed ? undefined : { width: pluginsWidth }}
+    >
       {collapsed ? (
         <div className="flex flex-col items-center pt-3 gap-2">
           {entries.map(e => {
@@ -156,6 +162,11 @@ function SidebarPluginSlot() {
           <button onClick={() => setCollapsed(true)} className="h-6 flex items-center justify-center text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer shrink-0" title="Collapse">
             <Icon icon="lucide:panel-right-close" width={12} height={12} />
           </button>
+          {/* Resize handle */}
+          <div
+            className="resize-handle absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--brand)] transition-all z-10 opacity-0 hover:opacity-60 hover:w-1.5"
+            onMouseDown={pluginsResize.onResizeStart}
+          />
         </>
       )}
     </div>
@@ -525,7 +536,7 @@ export default function EditorLayout() {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 min-h-0 rounded-xl overflow-hidden border border-[var(--border)]">
         {/* View navigation bar — folder tabs */}
-        <div data-tauri-drag-region className={`flex items-center h-11 bg-[var(--bg-elevated)] shrink-0 px-2.5 gap-1 tauri-drag-region ${isMacTauri && sidebarCollapsed ? 'pl-20' : ''}`}>
+        <div data-tauri-drag-region className={`flex items-center h-12 bg-[var(--bg-elevated)] shrink-0 px-3 gap-1.5 tauri-drag-region ${isMacTauri && sidebarCollapsed ? 'pl-20' : ''}`}>
           {/* Folder-style tab strip */}
           <div ref={tabContainerRef} className="folder-tab-strip tauri-no-drag">
             {VISIBLE_VIEWS.map((v, i) => {
@@ -541,11 +552,11 @@ export default function EditorLayout() {
                   whileTap={{ scale: 0.95 }}
                   layout
                 >
-                  <span className="flex items-center gap-1.5">
-                    <Icon icon={VIEW_ICONS[v].icon} width={15} height={15} className="folder-tab__icon" />
+                  <span className="flex items-center gap-2">
+                    <Icon icon={VIEW_ICONS[v].icon} width={17} height={17} className="folder-tab__icon" />
                     <span className="hidden sm:inline">{VIEW_ICONS[v].label}</span>
                     {v === 'git' && dirtyCount > 0 && (
-                      <span className="px-1 min-w-[16px] text-center rounded-full bg-[var(--brand)] text-[var(--brand-contrast)] text-[9px] leading-[16px] animate-badge-pop">{dirtyCount}</span>
+                      <span className="px-1.5 min-w-[18px] text-center rounded-full bg-[var(--brand)] text-[var(--brand-contrast)] text-[10px] leading-[18px] font-bold animate-badge-pop">{dirtyCount}</span>
                     )}
                   </span>
                 </motion.button>
@@ -566,8 +577,8 @@ export default function EditorLayout() {
           <div className="flex-1 tauri-drag-region" data-tauri-drag-region />
 
           {/* Settings */}
-          <button onClick={() => setSettingsVisible(true)} className="tauri-no-drag p-1.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors" title="Settings">
-            <Icon icon="lucide:settings" width={17} height={17} className="animate-gear-sway" />
+          <button onClick={() => setSettingsVisible(true)} className="tauri-no-drag p-2 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors" title="Settings">
+            <Icon icon="lucide:settings" width={19} height={19} className="animate-gear-sway" />
           </button>
         </div>
 

@@ -44,13 +44,13 @@ export function EditorView() {
   const treeResize = usePanelResize('tree')
   const chatResize = usePanelResize('chat')
 
-  // Auto-expand editor: when a file is opened, or when collapsed with no files
-  // (collapsed + no files is a dead-end — user needs the empty-state quick actions)
+  // Auto-expand editor when a file is opened (user action that needs the editor visible)
   const { setEditorCollapsed } = layout
+  const prevFileCount = useRef(files.length)
   useEffect(() => {
-    if (files.length > 0 || activeFile) {
-      setEditorCollapsed(false)
-    } else if (editorCollapsed && files.length === 0 && !activeFile) {
+    const fileOpened = files.length > prevFileCount.current || (activeFile && prevFileCount.current === 0)
+    prevFileCount.current = files.length
+    if (fileOpened && editorCollapsed) {
       setEditorCollapsed(false)
     }
   }, [files.length, activeFile, editorCollapsed, setEditorCollapsed])
@@ -135,27 +135,27 @@ export function EditorView() {
     <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden relative">
       {/* ── Editor collapsed: narrow toggle strip ── */}
       {editorCollapsed ? (
-        <div className="flex flex-col items-center w-[48px] shrink-0 bg-[var(--bg-elevated)] border-r border-[var(--border)]">
+        <div className="flex flex-col items-center w-[52px] shrink-0 bg-[var(--bg-elevated)] border-r border-[var(--border)]">
           <button
             onClick={() => layout.setEditorCollapsed(false)}
-            className="mt-3 p-2 rounded-md hover:bg-[var(--bg-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+            className="mt-3 p-2.5 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
             title="Expand editor (⌘E)"
           >
-            <Icon icon="lucide:code-2" width={18} height={18} />
+            <Icon icon="lucide:code-2" width={20} height={20} />
           </button>
           <button
             onClick={() => { layout.setEditorCollapsed(false); layout.show('tree') }}
-            className="mt-1 p-2 rounded-md hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+            className="mt-1.5 p-2.5 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
             title="Open explorer (⌘B)"
           >
-            <Icon icon="lucide:folder" width={16} height={16} />
+            <Icon icon="lucide:folder" width={18} height={18} />
           </button>
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('toggle-terminal'))}
-            className="mt-1 p-2 rounded-md hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+            className="mt-1.5 p-2.5 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
             title="Terminal (⌘J)"
           >
-            <Icon icon="lucide:terminal" width={16} height={16} />
+            <Icon icon="lucide:terminal" width={18} height={18} />
           </button>
         </div>
       ) : (
@@ -171,10 +171,10 @@ export function EditorView() {
                 transition={PANEL_SPRING}
                 className="shrink-0 bg-[var(--sidebar-bg)] overflow-hidden border-r border-[var(--border)] flex flex-col"
               >
-                <div className="flex items-center justify-between h-7 px-2.5 border-b border-[var(--border)] shrink-0">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)]">Explorer</span>
-                  <button onClick={() => layout.hide('tree')} className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer" title="Hide (⌘B)">
-                    <Icon icon="lucide:panel-left-close" width={13} height={13} />
+                <div className="flex items-center justify-between h-9 px-3 border-b border-[var(--border)] shrink-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-disabled)]">Explorer</span>
+                  <button onClick={() => layout.hide('tree')} className="p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer" title="Hide (⌘B)">
+                    <Icon icon="lucide:panel-left-close" width={15} height={15} />
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto"><FileExplorer /></div>
@@ -193,8 +193,8 @@ export function EditorView() {
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             {/* Tree toggle when collapsed */}
             {!treeVisible && (
-              <button onClick={() => layout.show('tree')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-4 h-10 flex items-center justify-center bg-[var(--bg-elevated)] border border-l-0 border-[var(--border)] rounded-r hover:bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer" title="Show explorer (⌘B)">
-                  <Icon icon="lucide:chevron-right" width={12} height={12} />
+              <button onClick={() => layout.show('tree')} className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-5 h-12 flex items-center justify-center bg-[var(--bg-elevated)] border border-l-0 border-[var(--border)] rounded-r-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer" title="Show explorer (⌘B)">
+                  <Icon icon="lucide:chevron-right" width={14} height={14} />
               </button>
             )}
 
@@ -227,26 +227,26 @@ export function EditorView() {
               </>
             ) : (
               /* Smart empty state */
-              <div className="flex-1 flex flex-col items-center justify-center gap-6">
+              <div className="flex-1 flex flex-col items-center justify-center gap-7">
                 {/* Animated icon with subtle glow */}
                 <div className="relative flex items-center justify-center">
-                  <div className="absolute w-20 h-20 rounded-full bg-[var(--brand)] opacity-[0.06] blur-xl animate-breathe" />
-                  <Icon icon="lucide:code-2" width={40} height={40} className="text-[var(--text-disabled)] opacity-40 animate-breathe" />
+                  <div className="absolute w-24 h-24 rounded-full bg-[var(--brand)] opacity-[0.06] blur-xl animate-breathe" />
+                  <Icon icon="lucide:code-2" width={48} height={48} className="text-[var(--text-disabled)] opacity-40 animate-breathe" />
                 </div>
 
-                <p className="text-[13px] text-[var(--text-tertiary)]">Start building something</p>
+                <p className="text-[15px] text-[var(--text-tertiary)] font-medium">Start building something</p>
 
                 {/* Quick action grid */}
-                <div className="grid grid-cols-2 gap-2 w-[340px]">
+                <div className="grid grid-cols-2 gap-3 w-[380px]">
                   {QUICK_ACTIONS.map((item) => (
                     <button
                       key={item.label}
                       onClick={() => handleQuickAction(item.event)}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_60%,transparent)] hover:bg-[var(--bg-subtle)] hover:border-[var(--text-disabled)] transition-all duration-200 cursor-pointer group"
+                      className="flex items-center gap-3.5 px-5 py-4 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_60%,transparent)] hover:bg-[var(--bg-subtle)] hover:border-[var(--text-disabled)] transition-all duration-200 cursor-pointer group"
                     >
-                      <Icon icon={item.icon} width={16} height={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] shrink-0" />
-                      <span className="flex-1 text-left text-[12px] text-[var(--text-secondary)] font-medium">{item.label}</span>
-                      <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-disabled)] shrink-0">{item.shortcut}</kbd>
+                      <Icon icon={item.icon} width={20} height={20} className="text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] shrink-0" />
+                      <span className="flex-1 text-left text-[13px] text-[var(--text-secondary)] font-semibold">{item.label}</span>
+                      <kbd className="text-[10px] px-2 py-1 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-disabled)] shrink-0 font-mono">{item.shortcut}</kbd>
                     </button>
                   ))}
                 </div>
@@ -254,51 +254,51 @@ export function EditorView() {
             )}
 
             {/* Bottom bar */}
-            <div className="flex items-center h-8 px-2.5 border-t border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 gap-1.5">
+            <div className="flex items-center h-10 px-3 border-t border-[var(--border)] bg-[var(--bg-elevated)] shrink-0 gap-2">
               {/* Segmented toggle group with animated active rail */}
-              <div ref={segmentRef} className="relative inline-flex items-center rounded-md bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] p-[2px] gap-[2px]">
+              <div ref={segmentRef} className="relative inline-flex items-center rounded-lg bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] p-[3px] gap-[3px]">
                 {/* Active rail indicator */}
                 {railStyle && (
                   <span
-                    className="absolute top-[2px] h-[calc(100%-4px)] rounded bg-[var(--bg)] shadow-sm pointer-events-none transition-all duration-200 ease-out z-0"
+                    className="absolute top-[3px] h-[calc(100%-6px)] rounded-md bg-[var(--bg)] shadow-sm pointer-events-none transition-all duration-200 ease-out z-0"
                     style={{ left: railStyle.left, width: railStyle.width }}
                   />
                 )}
 
-                <button data-active={treeVisible} onClick={() => layout.toggle('tree')} className={`relative z-[1] h-6 px-2 rounded text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${treeVisible ? 'text-[var(--text-primary)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'}`} title="Explorer (⌘B)">
-                  <Icon icon="lucide:folder" width={12} height={12} />
+                <button data-active={treeVisible} onClick={() => layout.toggle('tree')} className={`relative z-[1] h-7 px-3 rounded-md text-[12px] font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${treeVisible ? 'text-[var(--text-primary)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'}`} title="Explorer (⌘B)">
+                  <Icon icon="lucide:folder" width={14} height={14} />
                   <span>Files</span>
                 </button>
-                <button onClick={() => layout.toggle('terminal')} className="relative z-[1] h-6 px-2 rounded text-[10px] flex items-center gap-1 cursor-pointer transition-colors text-[var(--text-disabled)] hover:text-[var(--text-secondary)]" title="Terminal (⌘J)">
-                  <Icon icon="lucide:terminal" width={12} height={12} />
+                <button onClick={() => layout.toggle('terminal')} className="relative z-[1] h-7 px-3 rounded-md text-[12px] font-medium flex items-center gap-1.5 cursor-pointer transition-colors text-[var(--text-disabled)] hover:text-[var(--text-secondary)]" title="Terminal (⌘J)">
+                  <Icon icon="lucide:terminal" width={14} height={14} />
                   <span>Terminal</span>
-                  {terminalActive && <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />}
+                  {terminalActive && <span className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />}
                 </button>
-                <button data-active={engineVisible} onClick={() => layout.toggle('engine')} className={`relative z-[1] h-6 px-2 rounded text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${engineVisible ? 'text-[var(--text-primary)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'}`} title="Engine">
-                  <Icon icon="lucide:cpu" width={12} height={12} />
+                <button data-active={engineVisible} onClick={() => layout.toggle('engine')} className={`relative z-[1] h-7 px-3 rounded-md text-[12px] font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${engineVisible ? 'text-[var(--text-primary)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'}`} title="Engine">
+                  <Icon icon="lucide:cpu" width={14} height={14} />
                   <span>Engine</span>
-                  {engineRunning && <Icon icon="lucide:loader-2" width={9} height={9} className="animate-spin text-[var(--brand)]" />}
+                  {engineRunning && <Icon icon="lucide:loader-2" width={11} height={11} className="animate-spin text-[var(--brand)]" />}
                 </button>
               </div>
 
-              <button onClick={() => layout.setEditorCollapsed(true)} className="h-6 px-2 rounded text-[10px] flex items-center gap-1 hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] cursor-pointer text-[var(--text-disabled)]" title="Collapse editor (⌘E)">
-                <Icon icon="lucide:minimize-2" width={12} height={12} />
+              <button onClick={() => layout.setEditorCollapsed(true)} className="h-7 px-3 rounded-lg text-[12px] font-medium flex items-center gap-1.5 hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] cursor-pointer text-[var(--text-disabled)]" title="Collapse editor (⌘E)">
+                <Icon icon="lucide:minimize-2" width={14} height={14} />
                 <span>Collapse</span>
               </button>
 
               <div className="flex-1" />
 
               {branchName && (
-                <span className="text-[10px] font-mono text-[var(--text-disabled)] flex items-center gap-1 ml-1">
-                  <Icon icon="lucide:git-branch" width={12} height={12} />{branchName}
+                <span className="text-[12px] font-mono text-[var(--text-disabled)] flex items-center gap-1.5 ml-1">
+                  <Icon icon="lucide:git-branch" width={14} height={14} />{branchName}
                 </span>
               )}
 
-              <button onClick={() => layout.toggle('chat')} className={`relative h-6 px-2 rounded text-[10px] flex items-center gap-1 cursor-pointer transition-colors ${chatVisible ? 'bg-[color-mix(in_srgb,var(--brand)_14%,transparent)] text-[var(--brand)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)]'}`} title="Chat (⌘I)">
-                <Icon icon="lucide:message-square" width={12} height={12} />
+              <button onClick={() => layout.toggle('chat')} className={`relative h-7 px-3 rounded-lg text-[12px] font-medium flex items-center gap-1.5 cursor-pointer transition-colors ${chatVisible ? 'bg-[color-mix(in_srgb,var(--brand)_14%,transparent)] text-[var(--brand)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)]'}`} title="Chat (⌘I)">
+                <Icon icon="lucide:message-square" width={14} height={14} />
                 <span>Agent</span>
                 {agentUnread && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--brand)] animate-pulse ring-2 ring-[var(--bg-elevated)]" />
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--brand)] animate-pulse ring-2 ring-[var(--bg-elevated)]" />
                 )}
               </button>
             </div>
@@ -322,16 +322,31 @@ export function EditorView() {
             animate={editorCollapsed ? { opacity: 1 } : { width: chatWidth, opacity: 1 }}
             exit={editorCollapsed ? { opacity: 0 } : { width: 0, opacity: 0 }}
             transition={PANEL_SPRING}
-            className={`shrink-0 flex flex-col border-l border-[var(--border)] bg-[var(--bg)] overflow-hidden ${editorCollapsed ? 'flex-1' : ''}`}
+            className={`shrink-0 flex flex-col bg-[var(--bg)] overflow-hidden ${editorCollapsed ? 'flex-1' : 'border-l border-[var(--border)]'}`}
           >
-            <div className="flex items-center justify-between h-7 px-2.5 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] flex items-center gap-1.5">
-                <Icon icon="lucide:bot" width={12} height={12} className="text-[var(--brand)]" />
+            <div className="flex items-center justify-between h-9 px-3 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-disabled)] flex items-center gap-2">
+                <Icon icon="lucide:bot" width={15} height={15} className="text-[var(--brand)]" />
                 Agent
               </span>
-              <button onClick={() => layout.hide('chat')} className="p-1 rounded hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer" title="Hide (⌘I)">
-                <Icon icon="lucide:panel-right-close" width={13} height={13} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    if (editorCollapsed) {
+                      layout.setEditorCollapsed(false)
+                    } else {
+                      layout.setEditorCollapsed(true)
+                    }
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer"
+                  title={editorCollapsed ? 'Restore editor (⌘E)' : 'Expand chat (⌘E)'}
+                >
+                  <Icon icon={editorCollapsed ? 'lucide:minimize-2' : 'lucide:maximize-2'} width={15} height={15} />
+                </button>
+                <button onClick={() => layout.hide('chat')} className="p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] cursor-pointer" title="Hide (⌘I)">
+                  <Icon icon="lucide:panel-right-close" width={15} height={15} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 min-h-0 overflow-hidden">
               <AgentPanel />
