@@ -15,16 +15,18 @@ import { MarkdownPreview } from '@/components/markdown-preview'
 import { MarkdownModeToggle, type MarkdownViewMode } from '@/components/markdown-mode-toggle'
 
 if (typeof self !== 'undefined' && !(self as any).MonacoEnvironment) {
-  const noop = URL.createObjectURL(
-    new Blob(['self.onmessage = function() {}'], { type: 'application/javascript' })
-  );
+  const noopDataUrl = 'data:text/javascript;charset=utf-8,' + encodeURIComponent('self.onmessage=function(){}');
   (self as any).MonacoEnvironment = {
     getWorker() {
-      const w = new Worker(noop)
-      w.onerror = (e) => e.preventDefault()
-      return w
+      try {
+        const w = new Worker(noopDataUrl)
+        w.onerror = (e) => e.preventDefault()
+        return w
+      } catch {
+        return { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {} } as unknown as Worker
+      }
     },
-    getWorkerUrl() { return noop },
+    getWorkerUrl() { return noopDataUrl },
   }
 }
 
@@ -198,7 +200,7 @@ export function CodeEditor() {
         typescript: `${base}/language/typescript/ts.worker.js`,
       }
 
-      const workerBlobs = new Map<string, string>()
+      const workerDataUrls = new Map<string, string>()
       await Promise.all(
         Object.entries(workerUrls).map(async ([key, url]) => {
           try {
@@ -206,8 +208,8 @@ export function CodeEditor() {
             if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`)
             const text = await res.text()
             if (!text || text.length < 100) throw new Error(`Empty/truncated response for ${url}`)
-            workerBlobs.set(key, URL.createObjectURL(
-              new Blob([text], { type: 'application/javascript' })
+            workerDataUrls.set(key, URL.createObjectURL(
+              new Blob([text], { type: 'text/javascript' })
             ))
           } catch (err) {
             console.warn(`[Monaco] Failed to fetch worker "${key}":`, err)
@@ -215,9 +217,17 @@ export function CodeEditor() {
         })
       )
 
-      const noopWorkerUrl = URL.createObjectURL(
-        new Blob(['self.onmessage = function() {}'], { type: 'application/javascript' })
-      )
+      const noopDataUrl = 'data:text/javascript;charset=utf-8,' + encodeURIComponent('self.onmessage=function(){}')
+
+      const createFallbackWorker = () => {
+        try {
+          const w = new Worker(noopDataUrl)
+          w.onerror = (e) => e.preventDefault()
+          return w
+        } catch {
+          return { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {} } as unknown as Worker
+        }
+      }
 
       self.MonacoEnvironment = {
         getWorker(_workerId: string, label: string) {
@@ -228,23 +238,17 @@ export function CodeEditor() {
             typescript: 'typescript', javascript: 'typescript',
           }
           const key = labelMap[label] || 'editor'
-          const blobUrl = workerBlobs.get(key) ?? workerBlobs.get('editor')
-          if (!blobUrl) {
-            const w = new Worker(noopWorkerUrl)
-            w.onerror = (e) => e.preventDefault()
-            return w
-          }
+          const dataUrl = workerDataUrls.get(key) ?? workerDataUrls.get('editor')
+          if (!dataUrl) return createFallbackWorker()
           try {
-            const w = new Worker(blobUrl)
+            const w = new Worker(dataUrl)
             w.onerror = (e) => {
               e.preventDefault()
               e.stopImmediatePropagation()
             }
             return w
           } catch {
-            const w = new Worker(noopWorkerUrl)
-            w.onerror = (e) => e.preventDefault()
-            return w
+            return createFallbackWorker()
           }
         },
       }

@@ -22,6 +22,23 @@ const EXT_ICONS: Record<string, { icon: string; color: string }> = {
   yml: { icon: 'lucide:settings', color: '#cb171e' },
   yaml: { icon: 'lucide:settings', color: '#cb171e' },
   sh: { icon: 'lucide:terminal', color: '#4eaa25' },
+  png: { icon: 'lucide:image', color: '#a855f7' },
+  jpg: { icon: 'lucide:image', color: '#a855f7' },
+  jpeg: { icon: 'lucide:image', color: '#a855f7' },
+  gif: { icon: 'lucide:image', color: '#a855f7' },
+  webp: { icon: 'lucide:image', color: '#a855f7' },
+  avif: { icon: 'lucide:image', color: '#a855f7' },
+  ico: { icon: 'lucide:image', color: '#a855f7' },
+  bmp: { icon: 'lucide:image', color: '#a855f7' },
+  mp4: { icon: 'lucide:video', color: '#ef4444' },
+  webm: { icon: 'lucide:video', color: '#ef4444' },
+  mov: { icon: 'lucide:video', color: '#ef4444' },
+  mkv: { icon: 'lucide:video', color: '#ef4444' },
+  mp3: { icon: 'lucide:music', color: '#22c55e' },
+  wav: { icon: 'lucide:music', color: '#22c55e' },
+  ogg: { icon: 'lucide:music', color: '#22c55e' },
+  m4a: { icon: 'lucide:music', color: '#22c55e' },
+  flac: { icon: 'lucide:music', color: '#22c55e' },
 }
 
 function getFileIcon(path: string) {

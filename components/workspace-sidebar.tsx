@@ -165,10 +165,10 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, onDelete, collapse
       tabIndex={0}
       onClick={() => onSelect(s.id)}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(s.id) } }}
-      className={`group relative w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 cursor-pointer ${
+      className={`group relative w-full text-left px-3 py-2.5 rounded-[10px] transition-all duration-200 cursor-pointer ${
         activeId === s.id
-          ? 'bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] shadow-[inset_2px_0_0_var(--brand)]'
-          : 'hover:bg-[var(--bg-subtle)] hover:translate-x-0.5 border border-transparent'
+          ? 'bg-[color-mix(in_srgb,var(--brand)_14%,transparent)] border border-[color-mix(in_srgb,var(--brand)_20%,transparent)] shadow-[inset_2px_0_0_var(--brand)]'
+          : 'hover:bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] border border-transparent'
       }`}
     >
       <div className="flex items-center gap-2 mb-0.5">
@@ -249,24 +249,24 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, onDelete, collapse
             </div>
 
             {/* New Chat + Search row */}
-            <div className="flex items-center gap-2 px-3 pt-1.5 pb-2.5">
-              <div className="relative flex-1 rounded-md">
-                <Icon icon="lucide:search" width={13} height={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-disabled)] z-[3]" />
-                <input
-                  type="text"
-                  value={searchChat}
-                  onChange={e => setSearchChat(e.target.value)}
-                  placeholder="Search chats..."
-                  className="w-full pl-8 pr-2.5 py-1.5 text-[12px] rounded-md bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[color-mix(in_srgb,var(--brand)_50%,var(--border))] transition-colors relative z-[1]"
-                />
+            <div className="px-2 pt-1 pb-2">
+              <div className="flex items-center gap-2 rounded-xl bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] p-1.5">
+                <div className="relative flex-1">
+                  <Icon icon="lucide:search" width={13} height={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-disabled)] z-[3]" />
+                  <input
+                    type="text"
+                    value={searchChat}
+                    onChange={e => setSearchChat(e.target.value)}
+                    placeholder="Search chats..."
+                    className="w-full pl-8 pr-2.5 py-1.5 text-[12px] rounded-lg bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:bg-[color-mix(in_srgb,var(--text-primary)_10%,transparent)] transition-colors relative z-[1]"
+                  />
+                </div>
+                <button onClick={onNew} className="p-2 rounded-lg bg-[var(--brand)] text-[var(--brand-contrast)] hover:opacity-90 transition-opacity cursor-pointer shadow-sm" title="New Chat">
+                  <Icon icon="lucide:plus" width={14} height={14} />
+                </button>
               </div>
-              <button onClick={onNew} className="p-2 rounded-md bg-[var(--brand)] text-[var(--brand-contrast)] hover:opacity-90 transition-opacity cursor-pointer shadow-sm" title="New Chat">
-                <Icon icon="lucide:plus" width={14} height={14} />
-              </button>
             </div>
           </div>
-
-          <div className="h-px bg-[var(--border)] mx-3" />
 
           {/* Chat list */}
           <div
@@ -283,64 +283,68 @@ export function WorkspaceSidebar({ activeId, onSelect, onNew, onDelete, collapse
             }}
           >
             {pinned.length > 0 && (
-              <>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] px-3 pt-3 pb-1.5">Pinned</div>
+              <div className="rounded-xl bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] p-1.5 mt-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] px-2 pt-1 pb-1">Pinned</div>
                 <div className="flex flex-col gap-0.5">{pinned.map(renderSession)}</div>
-              </>
+              </div>
             )}
 
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] px-3 pt-3 pb-1.5">Recent</div>
-            <div className="flex flex-col gap-0.5">
-              {filteredRecent.length > 0
-                ? filteredRecent.map(renderSession)
-                : (
-                  <div className="px-3 py-8 text-center">
-                    <Icon icon="lucide:message-square-plus" width={28} height={28} className="mx-auto mb-2.5 text-[var(--text-disabled)] animate-breathe" />
-                    <p className="text-[12px] text-[var(--text-disabled)]">
-                      {repoName ? `Ready to work on ${repoName.split('/').pop()}` : 'Pick a repo and start building'}
-                    </p>
-                    <p className="text-[11px] text-[var(--text-disabled)] mt-1">
-                      {repoName ? "What's first?" : 'New chat to begin'}
-                    </p>
-                  </div>
-                )
-              }
+            <div className="rounded-xl bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] p-1.5 mt-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] px-2 pt-1 pb-1">Recent</div>
+              <div className="flex flex-col gap-0.5">
+                {filteredRecent.length > 0
+                  ? filteredRecent.map(renderSession)
+                  : (
+                    <div className="px-3 py-8 text-center">
+                      <Icon icon="lucide:message-square-plus" width={28} height={28} className="mx-auto mb-2.5 text-[var(--text-disabled)] animate-breathe" />
+                      <p className="text-[12px] text-[var(--text-disabled)]">
+                        {repoName ? `Ready to work on ${repoName.split('/').pop()}` : 'Pick a repo and start building'}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-disabled)] mt-1">
+                        {repoName ? "What's first?" : 'New chat to begin'}
+                      </p>
+                    </div>
+                  )
+                }
+              </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-2 py-1.5 border-t border-[var(--border)] shrink-0">
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('toggle-terminal'))}
-                className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
-                title="Terminal (⌘J)"
-              >
-                <Icon icon="lucide:terminal" width={16} height={16} />
-              </button>
-              <button
-                onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', metaKey: true }))}
-                className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
-                title="Toggle Explorer"
-              >
-                <Icon icon="lucide:folder" width={16} height={16} />
-              </button>
-            </div>
-            <div className="flex items-center gap-0.5">
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-git-panel'))}
-                className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
-                title="Git"
-              >
-                <Icon icon="lucide:git-branch" width={16} height={16} />
-              </button>
-              <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
-                className="w-[32px] h-[32px] flex items-center justify-center rounded-[var(--radius-sm)] hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
-                title="Settings"
-              >
-                <Icon icon="lucide:settings" width={16} height={16} className="animate-gear-sway" />
-              </button>
+          <div className="px-2 py-1.5 shrink-0">
+            <div className="flex items-center justify-between rounded-xl bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] px-1.5 py-1">
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('toggle-terminal'))}
+                  className="w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                  title="Terminal (⌘J)"
+                >
+                  <Icon icon="lucide:terminal" width={15} height={15} />
+                </button>
+                <button
+                  onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', metaKey: true }))}
+                  className="w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                  title="Toggle Explorer"
+                >
+                  <Icon icon="lucide:folder" width={15} height={15} />
+                </button>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-git-panel'))}
+                  className="w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                  title="Git"
+                >
+                  <Icon icon="lucide:git-branch" width={15} height={15} />
+                </button>
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
+                  className="w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+                  title="Settings"
+                >
+                  <Icon icon="lucide:settings" width={15} height={15} className="animate-gear-sway" />
+                </button>
+              </div>
             </div>
           </div>
 

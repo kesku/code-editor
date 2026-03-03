@@ -16,6 +16,7 @@ import { fetchFileContentsByName as fetchFileContents, commitFilesByName as comm
 import { PluginSlotRenderer, usePlugins } from '@/context/plugin-context'
 import { usePreview } from '@/context/preview-context'
 import { SpotifyPlugin } from '@/components/plugins/spotify/spotify-plugin'
+import { YouTubePlugin } from '@/components/plugins/youtube/youtube-plugin'
 import { BranchPicker } from '@/components/branch-picker'
 import { FolderIndicator } from '@/components/source-switcher'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -136,11 +137,15 @@ function SidebarPluginSlot() {
     <div className={`shrink-0 flex flex-col rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden transition-[width] duration-200 ${collapsed ? 'w-[48px]' : 'w-[220px]'}`}>
       {collapsed ? (
         <div className="flex flex-col items-center pt-3 gap-2">
-          {entries.map(e => (
-            <button key={e.id} onClick={() => setCollapsed(false)} className="p-2 rounded-md hover:bg-[var(--bg-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer" title="Expand">
-              <Icon icon="simple-icons:spotify" width={16} height={16} />
-            </button>
-          ))}
+          {entries.map(e => {
+            const icon = e.id.includes('youtube') ? 'mdi:youtube' : 'simple-icons:spotify'
+            const color = e.id.includes('youtube') ? '#FF0000' : '#1DB954'
+            return (
+              <button key={e.id} onClick={() => setCollapsed(false)} className="p-2 rounded-md hover:bg-[var(--bg-subtle)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] cursor-pointer" title="Expand">
+                <Icon icon={icon} width={16} height={16} style={{ color }} />
+              </button>
+            )
+          })}
         </div>
       ) : (
         <>
@@ -645,6 +650,7 @@ export default function EditorLayout() {
 
       {/* Plugins */}
       <SpotifyPlugin />
+      <YouTubePlugin />
       <PipWindow />
       <ComponentIsolatorListener />
       <PluginSlotRenderer slot="floating" />

@@ -3652,17 +3652,17 @@ p { line-height: 1.6; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   CyberNord Dark — Hacker terminal: matrix green on void black ☠️
+   CyberNord Dark — Deep navy CRT hacker terminal ☠️
    ══════════════════════════════════════════════════════════════════ */
 .dark[data-theme="cybernord"] {
-  --bg: #000000;
-  --bg-elevated: #050505;
-  --bg-subtle: #0a0a0a;
-  --bg-secondary: #030303;
-  --bg-tertiary: #0d0d0d;
-  --sidebar-bg: #000000;
-  --foreground: #00ff41;
-  --subtle: #00661a;
+  --bg: #060b18;
+  --bg-elevated: #0c1225;
+  --bg-subtle: #111830;
+  --bg-secondary: #080e1e;
+  --bg-tertiary: #141c38;
+  --sidebar-bg: #050a14;
+  --foreground: #c8e6ca;
+  --subtle: #3a6b44;
   --font-sans: 'Share Tech Mono', 'Fira Code', monospace;
   --font-mono: 'Share Tech Mono', 'Fira Code', monospace;
 
@@ -3675,52 +3675,52 @@ p { line-height: 1.6; }
   --error: #ff3333;
   --info: #00e5ff;
 
-  --text-primary: #00ff41;
-  --text-secondary: #00e636;
-  --text-tertiary: #00b32d;
-  --text-disabled: #004d10;
+  --text-primary: #b8e0bc;
+  --text-secondary: #7abf82;
+  --text-tertiary: #4a9054;
+  --text-disabled: #1e4028;
 
-  --border: #001a06;
-  --border-hover: #003d0f;
+  --border: #0f1a30;
+  --border-hover: #1a2848;
   --border-focus: #00ff41;
 
   --color-additions: #00ff41;
   --color-deletions: #ff3333;
 
-  --glass-bg: rgba(0, 0, 0, 0.96);
+  --glass-bg: rgba(6, 11, 24, 0.96);
   --glass-bg-hover: var(--bg-subtle);
   --glass-bg-elevated: var(--bg-subtle);
   --glass-border: var(--border);
   --glass-border-hover: rgba(0, 255, 65, 0.22);
-  --glass-shadow: rgba(0, 0, 0, 0.9);
-  --brand-glow: rgba(0, 255, 65, 0.20);
-  --brand-glow-subtle: rgba(0, 255, 65, 0.08);
+  --glass-shadow: rgba(4, 8, 18, 0.9);
+  --brand-glow: rgba(0, 255, 65, 0.18);
+  --brand-glow-subtle: rgba(0, 255, 65, 0.06);
   --brand-deep: #009922;
-  --brand-chat: #00660e;
-  --brand-contrast: #000000;
+  --brand-chat: #0a2a12;
+  --brand-contrast: #060b18;
 
-  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.7);
-  --shadow-xs: 0 2px 4px rgba(0, 0, 0, 0.8);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.7);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.8), 0 0 12px rgba(0, 255, 65, 0.06);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.8);
-  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 255, 65, 0.08);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.92), 0 0 36px rgba(0, 255, 65, 0.10);
-  --shadow-2xl: 0 24px 64px rgba(0, 0, 0, 0.95), 0 0 60px rgba(0, 255, 65, 0.14);
+  --shadow-2xs: 0 1px 2px rgba(2, 5, 14, 0.7);
+  --shadow-xs: 0 2px 4px rgba(2, 5, 14, 0.8);
+  --shadow-sm: 0 1px 3px rgba(2, 5, 14, 0.7);
+  --shadow: 0 2px 8px rgba(2, 5, 14, 0.8), 0 0 12px rgba(0, 255, 65, 0.04);
+  --shadow-md: 0 4px 12px rgba(2, 5, 14, 0.8);
+  --shadow-lg: 0 8px 28px rgba(2, 5, 14, 0.9), 0 0 24px rgba(0, 255, 65, 0.06);
+  --shadow-xl: 0 16px 48px rgba(2, 5, 14, 0.92), 0 0 36px rgba(0, 255, 65, 0.08);
+  --shadow-2xl: 0 24px 64px rgba(2, 5, 14, 0.95), 0 0 60px rgba(0, 255, 65, 0.10);
 
   --kn-claw: var(--brand);
   --vscode-text: var(--text-primary);
   --vscode-subtle: var(--text-tertiary);
   --vscode-muted: var(--text-secondary);
 
-  --overlay: rgba(0, 0, 0, 0.70);
+  --overlay: rgba(4, 8, 18, 0.75);
   --logo-filter: hue-rotate(100deg) saturate(2) brightness(1.5);
 
-  --scrollbar-thumb: #002a08;
-  --scrollbar-thumb-hover: #004d10;
-  --header-glass-bg: rgba(0, 0, 0, 0.96);
-  --shimmer-from: #050505;
-  --shimmer-via: #0a0a0a;
+  --scrollbar-thumb: #0f1a30;
+  --scrollbar-thumb-hover: #1a2848;
+  --header-glass-bg: rgba(5, 10, 20, 0.96);
+  --shimmer-from: #080e1e;
+  --shimmer-via: #111830;
 
   --radius-sm: 0px;
   --radius-md: 1px;

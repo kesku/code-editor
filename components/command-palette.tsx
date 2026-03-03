@@ -74,7 +74,7 @@ const COMMANDS: CommandItem[] = [
   { id: 'toggle-terminal', label: 'Toggle terminal', hint: 'Show or hide the terminal panel', keywords: ['terminal', 'shell', 'console'], icon: 'lucide:terminal', shortcut: '\u2318J', group: 'layout' },
   { id: 'toggle-engine', label: 'Toggle engine panel', hint: 'Show or hide the engine output', keywords: ['engine', 'output', 'build', 'logs'], icon: 'lucide:cpu', group: 'layout' },
   { id: 'toggle-chat', label: 'Toggle agent chat', hint: 'Show or hide the AI agent panel', keywords: ['chat', 'agent', 'ai', 'assistant'], icon: 'lucide:message-square', shortcut: '\u2318I', group: 'layout' },
-  { id: 'collapse-editor', label: 'Collapse editor', hint: 'Minimize editor to icon rail', keywords: ['collapse', 'minimize', 'hide', 'editor'], icon: 'lucide:panel-left-close', shortcut: '\u2318E', group: 'layout' },
+  { id: 'collapse-editor', label: 'Collapse editor', hint: 'Minimize editor to icon rail', keywords: ['collapse', 'minimize', 'hide', 'editor'], icon: 'lucide:minimize-2', shortcut: '\u2318E', group: 'layout' },
 
   // Layout presets
   { id: 'layout-focus', label: 'Layout: Focus', hint: 'Editor only \u2014 no panels, pure code', keywords: ['focus', 'zen', 'clean', 'minimal', 'distraction'], icon: 'lucide:maximize-2', group: 'preset' },

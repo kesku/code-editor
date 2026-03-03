@@ -111,6 +111,7 @@ function layoutReducer(state: LayoutState, action: LayoutAction): LayoutState {
       }
     case 'RESIZE': {
       const clamped = clampSize(action.panel, action.size)
+      if (state.panels[action.panel].size === clamped) return state
       return {
         ...state,
         panels: { ...state.panels, [action.panel]: { ...state.panels[action.panel], size: clamped } },
@@ -164,7 +165,7 @@ function buildInitialState(): LayoutState {
     const def = PANEL_DEFS[id]
     panels[id] = { visible: def.defaultVisible, size: def.defaultSize }
   }
-  return { panels, editorCollapsed: true }
+  return { panels, editorCollapsed: false }
 }
 
 // ─── Persistence ────────────────────────────────────────

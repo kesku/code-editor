@@ -44,11 +44,16 @@ export function EditorView() {
   const treeResize = usePanelResize('tree')
   const chatResize = usePanelResize('chat')
 
-  // Auto-expand editor when a file is opened
+  // Auto-expand editor: when a file is opened, or when collapsed with no files
+  // (collapsed + no files is a dead-end — user needs the empty-state quick actions)
   const { setEditorCollapsed } = layout
   useEffect(() => {
-    if (files.length > 0 || activeFile) setEditorCollapsed(false)
-  }, [files.length, activeFile, setEditorCollapsed])
+    if (files.length > 0 || activeFile) {
+      setEditorCollapsed(false)
+    } else if (editorCollapsed && files.length === 0 && !activeFile) {
+      setEditorCollapsed(false)
+    }
+  }, [files.length, activeFile, editorCollapsed, setEditorCollapsed])
 
   // ⌘B toggle tree, ⌘I toggle chat, ⌘E toggle editor collapse
   const { toggle } = layout
@@ -107,23 +112,24 @@ export function EditorView() {
   const hasFiles = files.length > 0 || activeFile
   const branchName = repo?.branch ?? local.gitInfo?.branch ?? null
 
+  const { show, hide } = layout
   const handleQuickAction = useCallback((event: string) => {
     switch (event) {
       case 'quick-open':
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', metaKey: true }))
         break
       case 'toggle-tree':
-        layout.show('tree')
+        show('tree')
         break
       case 'open-side-chat':
-        layout.show('chat')
+        show('chat')
         requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-agent-input')))
         break
       case 'toggle-terminal':
-        layout.toggle('terminal')
+        toggle('terminal')
         break
     }
-  }, [layout])
+  }, [show, toggle])
 
   return (
     <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden relative">
@@ -276,7 +282,7 @@ export function EditorView() {
               </div>
 
               <button onClick={() => layout.setEditorCollapsed(true)} className="h-6 px-2 rounded text-[10px] flex items-center gap-1 hover:bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] cursor-pointer text-[var(--text-disabled)]" title="Collapse editor (⌘E)">
-                <Icon icon="lucide:panel-left-close" width={12} height={12} />
+                <Icon icon="lucide:minimize-2" width={12} height={12} />
                 <span>Collapse</span>
               </button>
 
