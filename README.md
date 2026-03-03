@@ -21,7 +21,7 @@ Live at [editor.openknot.ai](https://editor.openknot.ai)
 
 ```bash
 pnpm install
-pnpm dev              # http://localhost:3000
+pnpm dev              # http://localhost:3080
 pnpm build            # production build (Vercel)
 ```
 

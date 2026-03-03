@@ -14,7 +14,7 @@ pnpm install
 GITHUB_TOKEN=ghp_...              # GitHub Personal Access Token
 WORKOS_CLIENT_ID=client_...       # WorkOS OAuth client
 WORKOS_API_KEY=sk_...             # WorkOS API key
-WORKOS_REDIRECT_URI=http://localhost:3000/callback
+WORKOS_REDIRECT_URI=http://localhost:3080/callback
 # Optional:
 ALLOWED_USER_EMAIL=you@example.com
 ALLOWED_IPS=*                     # * to disable restriction

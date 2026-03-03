@@ -145,7 +145,7 @@ sudo xcode-select --reset
   "gateway": {
     "controlUi": {
       "allowedOrigins": [
-        "http://localhost:3000",
+        "http://localhost:3080",
         "http://127.0.0.1:3000",
         "https://editor.openknot.ai"
       ]
@@ -265,7 +265,7 @@ Then click Connect again in the editor.
 
 **Fix:** Check that `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, and `WORKOS_REDIRECT_URI` are set correctly in environment variables.
    
-For local development, the redirect URI should be `http://localhost:3000/callback`.
+For local development, the redirect URI should be `http://localhost:3080/callback`.
 
 ---
 

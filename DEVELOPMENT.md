@@ -7,7 +7,7 @@
 ./scripts/dev.sh setup
 
 # Daily development
-./scripts/dev.sh              # web dev server → http://localhost:3000
+./scripts/dev.sh              # web dev server → http://localhost:3080
 ./scripts/dev.sh desktop      # desktop dev (Tauri + hot reload)
 ```
 
@@ -76,7 +76,7 @@ code-editor/
 pnpm dev
 ```
 
-Opens at **http://localhost:3000** with Turbopack hot reload.
+Opens at **http://localhost:3080** with Turbopack hot reload.
 
 ### Desktop (Tauri)
 

@@ -70,7 +70,7 @@ pnpm install
 pnpm tauri:dev
 ```
 
-The dev window connects to `http://localhost:3000` with full hot reload. Code changes in React components reflect immediately in the native window.
+The dev window connects to `http://localhost:3080` with full hot reload. Code changes in React components reflect immediately in the native window.
 
 **First run is slow** (2-5 minutes) — Rust compiles ~300 dependency crates. Subsequent runs are fast (<30 seconds).
 
@@ -101,7 +101,7 @@ src-tauri/target/release/bundle/
   "identifier": "ai.openknot.code-editor",
   "build": {
     "frontendDist": "../out",           // Static export directory
-    "devUrl": "http://localhost:3000",   // Dev server URL
+    "devUrl": "http://localhost:3080",   // Dev server URL
     "beforeDevCommand": "pnpm dev",     // Start Next.js dev
     "beforeBuildCommand": "pnpm build:static"  // Build static export
   },

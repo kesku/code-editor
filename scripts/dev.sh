@@ -118,7 +118,7 @@ dev_web() {
 
   echo ""
   log "Starting Next.js dev server (Turbopack)…"
-  echo -e "  ${CYAN}→${NC} http://localhost:3000"
+  echo -e "  ${CYAN}→${NC} http://localhost:3080"
   echo -e "  ${CYAN}→${NC} Press Ctrl+C to stop\n"
 
   pnpm dev
