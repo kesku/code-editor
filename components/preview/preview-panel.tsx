@@ -8,7 +8,6 @@ import { useView } from '@/context/view-context'
 import { useLocal } from '@/context/local-context'
 import { isTauri, tauriInvoke } from '@/lib/tauri'
 import { DeviceCarousel } from './device-carousel'
-import { PipWindow } from './pip-window'
 import { AgentAnnotationOverlay } from './agent-annotations'
 import { ComponentIsolator } from './component-isolator'
 
@@ -157,7 +156,7 @@ export function PreviewPanel() {
 
   const handleSinglePointerDown = useCallback((e: React.PointerEvent) => {
     if (device.id === 'responsive') return
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    if (e.button === 1 || e.button === 0) {
       e.preventDefault()
       setIsPanning(true)
       panStartRef.current = { x: e.clientX, y: e.clientY, panX, panY }
@@ -255,7 +254,7 @@ export function PreviewPanel() {
   // Reset zoom/pan when switching devices or modes
   useEffect(() => { resetView() }, [activeDevice, carouselMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (pip) return <PipWindow />
+  if (pip) return null
 
   const devScripts = scripts.filter(s => s.category === 'dev')
   const buildScripts = scripts.filter(s => s.category === 'build')
@@ -489,7 +488,7 @@ export function PreviewPanel() {
             <div
               ref={singleViewRef}
               className="w-full h-full overflow-hidden relative"
-              style={{ cursor: isPanning ? 'grabbing' : 'default' }}
+              style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
               onWheel={handleSingleWheel}
               onPointerDown={handleSinglePointerDown}
               onPointerMove={handleSinglePointerMove}
@@ -826,7 +825,7 @@ function EmptyPreviewState({ onSetUrl, scripts, devScripts, buildScripts, onRunS
 
       {!hasScripts && (
         <div className="flex flex-col gap-1 text-[10px] text-[var(--text-disabled)]">
-          <span className="font-mono">localhost:3080</span>
+          <span className="font-mono">localhost:3000</span>
           <span className="font-mono">localhost:5173</span>
           <span className="font-mono">localhost:8080</span>
         </div>

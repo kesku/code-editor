@@ -79,7 +79,7 @@ interface PreviewContextValue {
 const PreviewContext = createContext<PreviewContextValue | null>(null)
 
 export function PreviewProvider({ children }: { children: ReactNode }) {
-  const [previewUrl, setPreviewUrl] = useState('http://localhost:3080')
+  const [previewUrl, setPreviewUrl] = useState('http://localhost:3000')
   const [visible, setVisible] = useState(false)
   const [pip, setPip] = useState(false)
   const [activeDevice, setActiveDevice] = useState<DeviceFrame>('responsive')

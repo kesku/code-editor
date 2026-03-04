@@ -14,6 +14,7 @@ interface YTPlayerState {
 }
 
 const YOUTUBE_IFRAME_API = 'https://www.youtube.com/iframe_api'
+const YT_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY ?? ''
 
 declare global {
   interface Window {
@@ -42,12 +43,19 @@ interface YTPlayer {
   destroy(): void
 }
 
-const DEMO_VIDEOS = [
-  { id: 'jfKfPfyJRdk', title: 'lofi hip hop radio - beats to relax/study to', channel: 'Lofi Girl' },
-  { id: '5qap5aO4i9A', title: 'lofi hip hop radio - beats to sleep/chill to', channel: 'Lofi Girl' },
-  { id: 'rUxyKA_-grg', title: 'Synthwave Radio - Retrowave Mix', channel: 'Musicwave' },
-  { id: 'DWcJFNfaw9c', title: 'Jazz For Work & Study', channel: 'JAZZ' },
-  { id: '36YnV9STBqc', title: 'Coffee Shop Ambience', channel: 'Calm' },
+interface YTSearchResult {
+  id: string
+  title: string
+  channel: string
+  thumbnail: string
+}
+
+const DEMO_VIDEOS: YTSearchResult[] = [
+  { id: 'jfKfPfyJRdk', title: 'lofi hip hop radio - beats to relax/study to', channel: 'Lofi Girl', thumbnail: '' },
+  { id: '5qap5aO4i9A', title: 'lofi hip hop radio - beats to sleep/chill to', channel: 'Lofi Girl', thumbnail: '' },
+  { id: 'rUxyKA_-grg', title: 'Synthwave Radio - Retrowave Mix', channel: 'Musicwave', thumbnail: '' },
+  { id: 'DWcJFNfaw9c', title: 'Jazz For Work & Study', channel: 'JAZZ', thumbnail: '' },
+  { id: '36YnV9STBqc', title: 'Coffee Shop Ambience', channel: 'Calm', thumbnail: '' },
 ]
 
 function formatTime(seconds: number): string {
@@ -65,6 +73,8 @@ export function YouTubePlayer() {
   const [muted, setMuted] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [query, setQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<YTSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [showPlayer, setShowPlayer] = useState(false)
 
@@ -76,6 +86,7 @@ export function YouTubePlayer() {
   const volumeBeforeMute = useRef(50)
   const inputRef = useRef<HTMLInputElement>(null)
   const pendingVideoRef = useRef<{ id: string; title?: string; channel?: string } | null>(null)
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   volumeRef.current = volume
   mutedRef.current = muted
@@ -249,12 +260,50 @@ export function YouTubePlayer() {
     window.dispatchEvent(new CustomEvent('youtube-state-changed', { detail: { playing: false } }))
   }, [destroyPlayer])
 
-  const filteredVideos = query.trim()
-    ? DEMO_VIDEOS.filter(v =>
-        v.title.toLowerCase().includes(query.toLowerCase()) ||
-        v.channel.toLowerCase().includes(query.toLowerCase())
-      )
-    : DEMO_VIDEOS
+  const ytSearchAvailable = !!YT_API_KEY
+
+  const onQueryChange = useCallback((v: string) => {
+    setQuery(v)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!v.trim()) { setSearchResults([]); setSearching(false); return }
+    if (!ytSearchAvailable) return
+    setSearching(true)
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          part: 'snippet',
+          q: v,
+          type: 'video',
+          videoCategoryId: '10',
+          maxResults: '10',
+          key: YT_API_KEY,
+        })
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`)
+        if (!res.ok) { setSearchResults([]); return }
+        const data = await res.json()
+        const items: YTSearchResult[] = (data.items ?? []).map((item: Record<string, unknown>) => {
+          const snippet = item.snippet as Record<string, unknown>
+          const thumbs = snippet.thumbnails as Record<string, { url: string }>
+          return {
+            id: (item.id as Record<string, string>).videoId,
+            title: snippet.title as string,
+            channel: snippet.channelTitle as string,
+            thumbnail: thumbs?.medium?.url ?? thumbs?.default?.url ?? '',
+          }
+        }).filter((v: YTSearchResult) => v.id)
+        setSearchResults(items)
+      } catch {} finally { setSearching(false) }
+    }, 400)
+  }, [ytSearchAvailable])
+
+  const filteredVideos = ytSearchAvailable && query.trim()
+    ? searchResults
+    : query.trim()
+      ? DEMO_VIDEOS.filter(v =>
+          v.title.toLowerCase().includes(query.toLowerCase()) ||
+          v.channel.toLowerCase().includes(query.toLowerCase())
+        )
+      : DEMO_VIDEOS
 
   const track = playerState
   const paused = !playerState?.isPlaying
@@ -286,39 +335,48 @@ export function YouTubePlayer() {
               ref={inputRef}
               type="text"
               value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Escape') { setShowSearch(false); setQuery('') } }}
-              placeholder="Search videos…"
+              onChange={e => onQueryChange(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') { setShowSearch(false); onQueryChange('') } }}
+              placeholder={ytSearchAvailable ? 'Search YouTube…' : 'Search videos…'}
               className="flex-1 bg-transparent text-[10px] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none"
               autoFocus
               spellCheck={false}
             />
             {query && (
-              <button onClick={() => setQuery('')} className="p-0.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] cursor-pointer">
+              <button onClick={() => onQueryChange('')} className="p-0.5 rounded hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] cursor-pointer">
                 <Icon icon="lucide:x" width={10} height={10} />
               </button>
             )}
           </div>
           <div className="max-h-[200px] overflow-y-auto border-t border-[var(--border)]">
-            {filteredVideos.map(v => (
-              <button
-                key={v.id}
-                onClick={() => { playVideo(v.id, v.title, v.channel); setShowSearch(false); setQuery('') }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--bg-subtle)] cursor-pointer text-left"
-              >
-                <img
-                  src={`https://img.youtube.com/vi/${v.id}/default.jpg`}
-                  alt=""
-                  className="w-8 h-6 rounded object-cover shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[10px] text-[var(--text-primary)] truncate">{v.title}</div>
-                  <div className="text-[9px] text-[var(--text-tertiary)] truncate">{v.channel}</div>
-                </div>
-              </button>
-            ))}
-            {filteredVideos.length === 0 && (
-              <div className="px-3 py-2.5 text-[9px] text-[var(--text-disabled)]">No results</div>
+            {searching ? (
+              <div className="flex items-center gap-2 px-3 py-2.5">
+                <Icon icon="lucide:loader-2" width={11} height={11} className="text-[var(--text-disabled)] animate-spin" />
+                <span className="text-[9px] text-[var(--text-disabled)]">Searching…</span>
+              </div>
+            ) : (
+              <>
+                {filteredVideos.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => { playVideo(v.id, v.title, v.channel); setShowSearch(false); onQueryChange('') }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 hover:bg-[var(--bg-subtle)] cursor-pointer text-left"
+                  >
+                    <img
+                      src={v.thumbnail || `https://img.youtube.com/vi/${v.id}/default.jpg`}
+                      alt=""
+                      className="w-8 h-6 rounded object-cover shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] text-[var(--text-primary)] truncate">{v.title}</div>
+                      <div className="text-[9px] text-[var(--text-tertiary)] truncate">{v.channel}</div>
+                    </div>
+                  </button>
+                ))}
+                {filteredVideos.length === 0 && (
+                  <div className="px-3 py-2.5 text-[9px] text-[var(--text-disabled)]">No results</div>
+                )}
+              </>
             )}
           </div>
         </div>

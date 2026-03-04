@@ -15,6 +15,7 @@ export function DeviceCarousel() {
   const contentRef = useRef<HTMLDivElement>(null)
   const [hoveredDevice, setHoveredDevice] = useState<string | null>(null)
   const [isPanning, setIsPanning] = useState(false)
+  const didDragRef = useRef(false)
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
   const lastPinchDistRef = useRef<number | null>(null)
 
@@ -74,11 +75,11 @@ export function DeviceCarousel() {
     setZoom(newZoom)
   }, [zoom, panX, panY, setZoom, setPan])
 
-  // Pan via middle-click or space+drag
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    if (e.button === 1 || e.button === 0) {
       e.preventDefault()
       setIsPanning(true)
+      didDragRef.current = false
       panStartRef.current = { x: e.clientX, y: e.clientY, panX, panY }
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     }
@@ -88,6 +89,7 @@ export function DeviceCarousel() {
     if (!isPanning) return
     const dx = e.clientX - panStartRef.current.x
     const dy = e.clientY - panStartRef.current.y
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDragRef.current = true
     setPan(panStartRef.current.panX + dx, panStartRef.current.panY + dy)
   }, [isPanning, setPan])
 
@@ -172,7 +174,7 @@ export function DeviceCarousel() {
       <div
         ref={containerRef}
         className="flex-1 overflow-hidden relative"
-        style={{ cursor: isPanning ? 'grabbing' : 'default' }}
+        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -201,7 +203,7 @@ export function DeviceCarousel() {
               }`}
               onMouseEnter={() => setHoveredDevice(device.id)}
               onMouseLeave={() => setHoveredDevice(null)}
-              onClick={() => !isPanning && selectDevice(device.id)}
+              onClick={() => !didDragRef.current && selectDevice(device.id)}
             >
               <DeviceWrapper device={device}>
                 <iframe
@@ -381,7 +383,7 @@ function ZoomHint() {
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] shadow-lg">
         <Icon icon="lucide:mouse" width={12} height={12} className="text-[var(--text-disabled)]" />
         <span className="text-[10px] text-[var(--text-tertiary)]">
-          ⌘ + scroll to zoom · Alt + drag to pan
+          ⌘ + scroll to zoom · drag to pan
         </span>
       </div>
     </div>

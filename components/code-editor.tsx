@@ -36,6 +36,35 @@ if (typeof self !== 'undefined' && !(self as any).MonacoEnvironment) {
   }
 }
 
+function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === 'AbortError') return true
+  if (err instanceof Error && (err.name === 'AbortError' || err.message === 'The operation was aborted.')) return true
+  return false
+}
+
+if (typeof window !== 'undefined') {
+  const origConsoleError = console.error
+  console.error = (...args: unknown[]) => {
+    if (args.some(a => isAbortError(a))) return
+    if (args.some(a => typeof a === 'string' && a.includes('The operation was aborted'))) return
+    origConsoleError.apply(console, args)
+  }
+
+  window.addEventListener('error', (e) => {
+    if (isAbortError(e.error)) {
+      e.preventDefault()
+      return
+    }
+  })
+
+  window.addEventListener('unhandledrejection', (e) => {
+    if (isAbortError(e.reason)) {
+      e.preventDefault()
+      return
+    }
+  })
+}
+
 function WelcomeView() {
   const recentFolders = (() => {
     try {
@@ -346,7 +375,9 @@ export function CodeEditor() {
       if (mounted) setMonacoReady(true)
     }
 
-    void initMonaco()
+    void initMonaco().catch((err) => {
+      if (!isAbortError(err)) console.error('[Monaco] init failed:', err)
+    })
 
     return () => {
       mounted = false
@@ -394,7 +425,6 @@ export function CodeEditor() {
   const handleMount: OnMount = useCallback((editor) => {
     editorRef.current = editor
 
-    // Track cursor position
     editor.onDidChangeCursorPosition((e) => {
       window.dispatchEvent(new CustomEvent('cursor-change', {
         detail: { line: e.position.lineNumber, col: e.position.column }

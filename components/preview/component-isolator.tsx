@@ -102,7 +102,7 @@ function extractImportedIdentifiers(code: string): string[] {
   return ids
 }
 
-/* ─── Strip imports/exports so code is plain declarations ─── */
+/* ─── Strip imports/exports/TS-only syntax so code is plain JS declarations ─── */
 function stripForIsolation(code: string): string {
   return code
     // Remove 'use client' / 'use server'
@@ -113,6 +113,21 @@ function stripForIsolation(code: string): string {
     // Remove 'export default ' and 'export ' but keep the declaration
     .replace(/^export\s+default\s+/gm, '')
     .replace(/^export\s+/gm, '')
+    // Remove standalone type/interface blocks (TS-only, not valid JS)
+    .replace(/^type\s+\w+(?:<[^>]*>)?\s*=\s*[\s\S]*?(?:^[}\]];?\s*$|;\s*$)/gm, '')
+    .replace(/^interface\s+\w+(?:<[^>]*>)?\s*(?:extends\s+\w+(?:<[^>]*>)?\s*)?{[\s\S]*?^}\s*$/gm, '')
+    // Remove remaining standalone type aliases on a single line
+    .replace(/^type\s+\w+(?:<[^>]*>)?\s*=\s*.+$/gm, '')
+    // Strip inline type annotations from function params: (x: Type) → (x)
+    .replace(/:\s*(?:React\.(?:FC|ReactNode|CSSProperties|MouseEvent|ChangeEvent|KeyboardEvent|RefObject|MutableRefObject|Dispatch|SetStateAction|ComponentProps)\b(?:<[^>]*>)?|string|number|boolean|null|undefined|void|any|never|unknown|object|bigint|symbol|Record<[^>]*>|Array<[^>]*>|Map<[^>]*>|Set<[^>]*>|Promise<[^>]*>|\w+(?:<[^>]*>)?(?:\s*\|\s*\w+(?:<[^>]*>)?)*(?:\[\])?)(?=\s*[,)=}])/g, '')
+    // Strip return type annotations: ) : Type => or ): Type {
+    .replace(/\)\s*:\s*(?:React\.\w+(?:<[^>]*>)?|JSX\.Element|string|number|boolean|void|null|undefined|any|never|unknown|Promise<[^>]*>|\w+(?:<[^>]*>)?(?:\s*\|\s*\w+(?:<[^>]*>)?)*)\s*(?=[{=])/g, ') ')
+    // Remove `as Type` casts
+    .replace(/\s+as\s+(?:const|(?:React\.)?\w+(?:<[^>]*>)?(?:\s*\|\s*\w+(?:<[^>]*>)?)*)/g, '')
+    // Remove angle-bracket generics on function calls that TS uses: foo<Type>(...)
+    .replace(/(?<=\w)<(?:string|number|boolean|any|unknown|\w+(?:\s*,\s*\w+)*)>(?=\()/g, '')
+    // Remove non-null assertions
+    .replace(/!(?=\.|\[)/g, '')
 }
 
 /* ─── Build shim declarations for imported identifiers that would be undefined ─── */
@@ -246,8 +261,8 @@ root.render(
 );
 `
 
-  // Escape for safe embedding inside <script> (close-script tag)
-  const safeSource = babelSource.replace(/<\/script/gi, '<\\/script')
+  // JSON-stringify the source for safe embedding, then escape close-script tags
+  const jsonSource = JSON.stringify(babelSource).replace(/<\/script/gi, '<\\/script')
 
   return `<!DOCTYPE html>
 <html>
@@ -293,14 +308,32 @@ window.addEventListener('unhandledrejection', function(e) {
   window.parent.postMessage({ type: '__isolation_error__', message: msg }, '*');
 });
 </script>
-<script type="text/babel" data-presets="react,typescript">
-try {
-${safeSource}
-} catch (err) {
-  document.getElementById('root').innerHTML =
-    '<div class="error-box"><b>Render error</b>\\n\\n' + (err.stack || err.message) + '</div>';
-  window.parent.postMessage({ type: '__isolation_error__', message: err.message, stack: err.stack }, '*');
-}
+<script>
+(function() {
+  var source = ${jsonSource};
+  var compiled;
+  try {
+    compiled = Babel.transform(source, {
+      presets: [
+        ['typescript', { isTSX: true, allExtensions: true }],
+        'react'
+      ],
+      filename: 'component.tsx',
+    }).code;
+  } catch (err) {
+    document.getElementById('root').innerHTML =
+      '<div class="error-box"><b>Babel transform error</b>\\n\\n' + (err.stack || err.message) + '</div>';
+    window.parent.postMessage({ type: '__isolation_error__', message: 'Babel: ' + err.message, stack: err.stack }, '*');
+    return;
+  }
+  try {
+    new Function(compiled)();
+  } catch (err) {
+    document.getElementById('root').innerHTML =
+      '<div class="error-box"><b>Render error</b>\\n\\n' + (err.stack || err.message) + '</div>';
+    window.parent.postMessage({ type: '__isolation_error__', message: err.message, stack: err.stack }, '*');
+  }
+})();
 <\/script>
 </body>
 </html>`

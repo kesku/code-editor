@@ -14,6 +14,9 @@ interface PluginState {
   slots: Record<PluginSlot, PluginEntry[]>
   registerPlugin: (slot: PluginSlot, entry: PluginEntry) => void
   unregisterPlugin: (id: string) => void
+  enabledPlugins: Record<string, boolean>
+  togglePlugin: (id: string) => void
+  isPluginEnabled: (id: string) => boolean
 }
 
 const PluginContext = createContext<PluginState | null>(null)
@@ -26,8 +29,19 @@ const EMPTY_SLOTS: Record<PluginSlot, PluginEntry[]> = {
   settings: [],
 }
 
+const STORAGE_KEY = 'ce:enabled-plugins'
+
+function loadEnabledPlugins(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return {}
+}
+
 export function PluginProvider({ children }: { children: ReactNode }) {
   const [slots, setSlots] = useState<Record<PluginSlot, PluginEntry[]>>(EMPTY_SLOTS)
+  const [enabledPlugins, setEnabledPlugins] = useState<Record<string, boolean>>(loadEnabledPlugins)
 
   const registerPlugin = useCallback((slot: PluginSlot, entry: PluginEntry) => {
     setSlots(prev => {
@@ -53,9 +67,21 @@ export function PluginProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const togglePlugin = useCallback((id: string) => {
+    setEnabledPlugins(prev => {
+      const next = { ...prev, [id]: !(prev[id] ?? true) }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  const isPluginEnabled = useCallback((id: string) => {
+    return enabledPlugins[id] ?? true
+  }, [enabledPlugins])
+
   const value = useMemo<PluginState>(() => ({
-    slots, registerPlugin, unregisterPlugin,
-  }), [slots, registerPlugin, unregisterPlugin])
+    slots, registerPlugin, unregisterPlugin, enabledPlugins, togglePlugin, isPluginEnabled,
+  }), [slots, registerPlugin, unregisterPlugin, enabledPlugins, togglePlugin, isPluginEnabled])
 
   return (
     <PluginContext.Provider value={value}>
@@ -71,12 +97,21 @@ export function usePlugins() {
 }
 
 export const PluginSlotRenderer = memo(function PluginSlotRenderer({ slot }: { slot: PluginSlot }) {
-  const { slots } = usePlugins()
+  const { slots, isPluginEnabled } = usePlugins()
   const entries = slots[slot]
   if (entries.length === 0) return null
+
+  const PLUGIN_GROUP_PREFIX: Record<string, string> = {
+    'spotify-status-bar': 'spotify-player',
+    'spotify-settings': 'spotify-player',
+    'youtube-status-bar': 'youtube-player',
+  }
+
   return (
     <>
       {entries.map(entry => {
+        const parentId = PLUGIN_GROUP_PREFIX[entry.id]
+        if (parentId && !isPluginEnabled(parentId)) return null
         const Comp = entry.component
         return <Comp key={entry.id} />
       })}
