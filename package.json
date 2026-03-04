@@ -3,16 +3,17 @@
   "version": "0.7.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "build:static": "next build",
-    "start": "npx serve out",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "run:web": "node scripts/run.mjs web",
-    "run:desktop": "node scripts/run.mjs desktop",
-    "release": "node scripts/release.mjs"
+    "frontend:dev": "PORT=3080 next dev --turbopack",
+    "frontend:build": "next build",
+    "desktop:dev": "PORT=3080 tauri dev",
+    "desktop:check": "tsc --noEmit",
+    "desktop:build": "tauri build",
+    "desktop:build:debug": "tauri build --debug",
+    "desktop:release": "pnpm desktop:check && pnpm desktop:build",
+    "desktop:doctor": "pkill -f \"next dev|tauri dev\" || true; rm -f .next/lock",
+    "dev": "pnpm desktop:dev",
+    "build": "pnpm desktop:build",
+    "check": "pnpm desktop:check"
   },
   "dependencies": {
     "@iconify/react": "^6.0.2",

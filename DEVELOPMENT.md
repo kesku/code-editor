@@ -83,7 +83,7 @@ Opens at **http://localhost:3080** with Turbopack hot reload.
 ```bash
 ./scripts/dev.sh desktop
 # or
-pnpm tauri:dev
+pnpm desktop:dev
 ```
 
 Launches a native macOS window with the web app inside. Both the web frontend and Rust backend hot-reload.

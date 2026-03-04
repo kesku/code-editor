@@ -40,7 +40,7 @@ function restore() {
 
 hide()
 try {
-  execSync('next build --webpack', { stdio: 'inherit', cwd: root })
+  execSync('npx next build --webpack', { stdio: 'inherit', cwd: root })
 } finally {
   restore()
 }

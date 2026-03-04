@@ -21,7 +21,7 @@ const PANEL_SPRING = { type: 'spring' as const, stiffness: 500, damping: 35 }
 
 const QUICK_ACTIONS = [
   { icon: 'lucide:file-search', label: 'Open File', shortcut: '\u2318P', event: 'quick-open' },
-  { icon: 'lucide:folder', label: 'Browse Files', shortcut: '\u2318B', event: 'toggle-tree' },
+  { icon: 'lucide:folder', label: 'Browse', shortcut: '\u2318B', event: 'toggle-tree' },
   { icon: 'lucide:message-square', label: 'New Chat', shortcut: '\u2318L', event: 'open-side-chat' },
   { icon: 'lucide:terminal', label: 'Terminal', shortcut: '\u2318J', event: 'toggle-terminal' },
 ]

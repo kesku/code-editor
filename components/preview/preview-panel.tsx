@@ -97,7 +97,9 @@ export function PreviewPanel() {
   const [urlEditing, setUrlEditing] = useState(false)
   const [loading, setLoading] = useState(false)
   const [showScripts, setShowScripts] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const previewRootRef = useRef<HTMLDivElement>(null)
   const singleViewRef = useRef<HTMLDivElement>(null)
   const [isPanning, setIsPanning] = useState(false)
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
@@ -202,6 +204,36 @@ export function PreviewPanel() {
 
   useEffect(() => { setUrlInput(previewUrl) }, [previewUrl])
 
+  // Fullscreen sync + escape safety
+  useEffect(() => {
+    const onFsChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {})
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+        return
+      }
+      await (previewRootRef.current ?? document.documentElement).requestFullscreen()
+    } catch {
+      // ignore; browser/tauri may block fullscreen in some contexts
+    }
+  }, [])
+
   const handleUrlSubmit = () => {
     let url = urlInput.trim()
     if (url && !url.startsWith('http')) url = `http://${url}`
@@ -230,7 +262,7 @@ export function PreviewPanel() {
   const otherScripts = scripts.filter(s => s.category !== 'dev' && s.category !== 'build')
 
   return (
-    <div className="flex flex-col w-full h-full bg-[var(--bg)] overflow-hidden">
+    <div ref={previewRootRef} className="flex flex-col w-full h-full bg-[var(--bg)] overflow-hidden">
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <div className="flex items-center gap-1 h-9 px-2 border-b border-[var(--border)] bg-[var(--bg-elevated)] shrink-0">
         {/* Navigation */}
@@ -369,6 +401,15 @@ export function PreviewPanel() {
           {/* PiP */}
           <button onClick={() => setPip(true)} className="p-1 rounded text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer" title="Picture-in-Picture">
             <Icon icon="lucide:picture-in-picture-2" width={13} height={13} />
+          </button>
+
+          {/* Fullscreen toggle */}
+          <button
+            onClick={toggleFullscreen}
+            className={`p-1 rounded cursor-pointer ${isFullscreen ? 'text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_15%,transparent)]' : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]'}`}
+            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen preview'}
+          >
+            <Icon icon={isFullscreen ? 'lucide:minimize-2' : 'lucide:maximize-2'} width={13} height={13} />
           </button>
 
           {/* Open external */}
