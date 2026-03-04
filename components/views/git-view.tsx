@@ -331,6 +331,18 @@ export function GitView() {
     setUnstaging(false)
   }, [isLocalMode, selectedFiles, changeEntries, local])
 
+  const handleUnstageSingle = useCallback(async (path: string) => {
+    if (!isLocalMode) return
+    setUnstageError(null)
+    try {
+      await local.unstageFiles([path])
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setUnstageError(msg)
+      setTimeout(() => setUnstageError(null), 5000)
+    }
+  }, [isLocalMode, local])
+
   const handleDiscardChanges = useCallback(async () => {
     if (!local.discardChanges) return
     const paths = changeEntries
@@ -709,7 +721,7 @@ export function GitView() {
                   ? changeEntries.filter(e => e.source === 'editor' || e.index_status === ' ' || e.index_status === '?')
                   : changeEntries
 
-                const renderEntry = (entry: ChangeEntry) => {
+                const renderEntry = (entry: ChangeEntry, staged = false) => {
                   const fileName = entry.path.split('/').pop() ?? entry.path
                   const dirPath = entry.path.split('/').slice(0, -1).join('/')
                   const statusColor =
@@ -751,6 +763,15 @@ export function GitView() {
                       {dirPath && (
                         <span className="text-[10px] text-[var(--text-disabled)] truncate ml-auto shrink-0 font-mono">{dirPath}</span>
                       )}
+                      {staged && isLocalMode && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleUnstageSingle(entry.path) }}
+                          className="hidden group-hover:flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-[var(--radius-sm)] hover:bg-[var(--bg-elevated)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors"
+                          title="Unstage file"
+                        >
+                          <Icon icon="lucide:minus" width={10} height={10} />
+                        </button>
+                      )}
                       <span className={`text-[9px] font-mono font-bold shrink-0 ${statusColor}`} title={statusTitle}>
                         {statusLabel}
                       </span>
@@ -789,7 +810,7 @@ export function GitView() {
                             )}
                           </div>
                         </div>
-                        {stagedEntries.map(renderEntry)}
+                        {stagedEntries.map(e => renderEntry(e, true))}
                       </>
                     )}
                     {(isLocalMode ? unstagedEntries.length > 0 : true) && (
@@ -813,7 +834,7 @@ export function GitView() {
                             </div>
                           </div>
                         )}
-                        {unstagedEntries.map(renderEntry)}
+                        {unstagedEntries.map(e => renderEntry(e))}
                       </>
                     )}
                   </>
