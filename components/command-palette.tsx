@@ -29,6 +29,7 @@ type CommandId =
   | 'view-editor'
   | 'view-preview'
   | 'view-git'
+  | 'view-skills'
   | 'view-settings'
   | 'open-onboarding'
   // Git operations
@@ -218,6 +219,14 @@ const COMMANDS: CommandItem[] = [
     icon: 'lucide:git-branch',
     group: 'navigate',
   },
+  {
+    id: 'view-skills',
+    label: 'Go to Skills',
+    hint: 'Open the curated skills catalog',
+    keywords: ['skills', 'catalog', 'workflow', 'agents'],
+    icon: 'lucide:sparkles',
+    group: 'navigate',
+  },
 
   {
     id: 'view-settings',
@@ -320,6 +329,7 @@ const VIEW_CONTEXT_COMMANDS: Partial<Record<ViewId, CommandId[]>> = {
     'toggle-terminal',
   ],
   git: ['git-commit', 'git-push', 'git-pull', 'git-stash', 'toggle-terminal'],
+  skills: ['view-skills', 'view-editor', 'view-git'],
 
   preview: ['preview-refresh', 'view-editor'],
 }

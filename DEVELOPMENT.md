@@ -187,7 +187,7 @@ This:
 
 The `release.yml` workflow:
 
-1. Builds a universal macOS DMG (arm64 + x86_64)
+1. Builds an aarch64 macOS DMG (Apple Silicon)
 2. Code-signs with Apple Developer certificate (if secrets are configured)
 3. Notarizes with Apple (if secrets are configured)
 4. Creates a **draft** GitHub Release with the DMG attached
