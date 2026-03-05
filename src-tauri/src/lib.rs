@@ -13,7 +13,11 @@ const LOCALHOST_PORT: u16 = 3080;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_localhost::Builder::new(LOCALHOST_PORT).build())
+        .plugin(
+            tauri_plugin_localhost::Builder::new(LOCALHOST_PORT)
+                .host("127.0.0.1")
+                .build(),
+        )
         .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -183,7 +187,7 @@ pub fn run() {
             // instead of tauri://localhost — required for YouTube embeds and Spotify PKCE.
             {
                 let window = app.get_webview_window("main").unwrap();
-                let url = format!("http://localhost:{}", LOCALHOST_PORT);
+                let url = format!("http://127.0.0.1:{}", LOCALHOST_PORT);
                 let _ = window.navigate(url.parse().unwrap());
             }
 
