@@ -27,7 +27,7 @@ interface ViewState {
 const ViewContext = createContext<ViewState | null>(null)
 
 export function ViewProvider({ children }: { children: ReactNode }) {
-  const [activeView, setActiveView] = useState<ViewId>('editor')
+  const [activeView, setActiveView] = useState<ViewId>('chat')
   const [previousView, setPreviousView] = useState<ViewId | null>(null)
   const [direction, setDirection] = useState<'forward' | 'back'>('forward')
 
