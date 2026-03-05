@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
 
-export type ViewId = 'chat' | 'editor' | 'preview' | 'workflows' | 'grid' | 'diff' | 'git' | 'prs' | 'settings'
+export type ViewId = 'chat' | 'editor' | 'preview' | 'diff' | 'git' | 'prs' | 'settings'
 
-const VIEW_ORDER: ViewId[] = ['editor', 'preview', 'workflows', 'grid', 'git', 'prs', 'settings']
+const VIEW_ORDER: ViewId[] = ['editor', 'preview', 'git', 'prs', 'settings']
 
 interface ViewState {
   activeView: ViewId

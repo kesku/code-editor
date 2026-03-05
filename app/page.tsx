@@ -47,8 +47,6 @@ const WidgetPipWindow = dynamic(() => import('@/components/plugins/widget-pip-wi
 const VIEW_ICONS: Record<string, { icon: string; label: string }> = {
   editor: { icon: 'lucide:code-2', label: 'Editor' },
   preview: { icon: 'lucide:eye', label: 'Preview' },
-  workflows: { icon: 'lucide:workflow', label: 'Workflows' },
-  grid: { icon: 'lucide:layout-grid', label: 'Grid' },
   diff: { icon: 'lucide:git-compare', label: 'Diff' },
   git: { icon: 'lucide:git-branch', label: 'Git' },
   prs: { icon: 'lucide:git-pull-request', label: 'PRs' },
@@ -663,17 +661,7 @@ export default function EditorLayout() {
     }
   }, [activeFile, saveFile])
 
-  // ─── Landing check ─────────────────────────────────────
-  useEffect(() => {
-    const hasVisited = localStorage.getItem('code-editor:visited')
-    if (!hasVisited && !isTauriDesktop) setShowLanding(true)
-  }, [isTauriDesktop])
-
   const dirtyCount = useMemo(() => files.filter(f => f.dirty).length, [files])
-
-  if (showLanding) {
-    return <Landing onEnter={() => { setShowLanding(false); localStorage.setItem('code-editor:visited', 'true') }} />
-  }
 
   return (
     <div className="flex h-full w-full bg-[var(--bg)] text-[var(--text-primary)] overflow-hidden gap-1.5 p-1.5">
@@ -774,16 +762,27 @@ export default function EditorLayout() {
             </button>
           )}
 
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as AppMode)}
-            className="tauri-no-drag h-8 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 text-[12px] text-[var(--text-secondary)] outline-none"
-            title="UI Mode"
-          >
-            <option value="classic">Classic</option>
-            <option value="chat">Chat</option>
-            <option value="tui">TUI</option>
-          </select>
+          {/* Mode switcher */}
+          <div className="tauri-no-drag flex items-center rounded-lg bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] p-[3px] gap-[2px]">
+            {([
+              { id: 'classic' as AppMode, icon: 'lucide:code-2', label: 'Classic' },
+              { id: 'chat' as AppMode, icon: 'lucide:message-square', label: 'Chat' },
+              { id: 'tui' as AppMode, icon: 'lucide:terminal', label: 'TUI' },
+            ]).map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                className={`relative h-7 w-7 flex items-center justify-center rounded-md transition-all cursor-pointer ${
+                  mode === m.id
+                    ? 'bg-[var(--bg)] text-[var(--text-primary)] shadow-sm'
+                    : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'
+                }`}
+                title={`${m.label} mode`}
+              >
+                <Icon icon={m.icon} width={15} height={15} />
+              </button>
+            ))}
+          </div>
 
           {/* Settings */}
           <button onClick={() => setSettingsVisible(true)} className="tauri-no-drag p-2 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors" title="Settings">
@@ -817,8 +816,7 @@ export default function EditorLayout() {
               <ErrorBoundary key={activeView} fallbackLabel={`${VIEW_ICONS[activeView]?.label ?? activeView} failed to render`}>
                 {activeView === 'editor' && <EditorView />}
                 {activeView === 'preview' && <PreviewPanel />}
-                {activeView === 'workflows' && <WorkflowView />}
-                {activeView === 'grid' && <GridView />}
+
                 {activeView === 'git' && <GitView />}
                 {activeView === 'prs' && <PrView />}
                 {activeView === 'settings' && (
@@ -994,8 +992,7 @@ export default function EditorLayout() {
             // Navigation
             case 'view-editor': setView('editor'); break
             case 'view-preview': setView('preview'); break
-            case 'view-workflows': setView('workflows'); break
-            case 'view-grid': setView('grid'); break
+
             case 'view-git': setView('git'); break
             case 'view-prs': setView('prs'); break
             case 'view-settings': setView('settings'); break

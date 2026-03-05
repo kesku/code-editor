@@ -27,8 +27,7 @@ type CommandId =
   // Navigation
   | 'view-editor'
   | 'view-preview'
-  | 'view-workflows'
-  | 'view-grid'
+
   | 'view-git'
   | 'view-prs'
   | 'view-settings'
@@ -84,8 +83,7 @@ const COMMANDS: CommandItem[] = [
   // Navigation
   { id: 'view-editor', label: 'Go to Editor', hint: 'Switch to the editor view', keywords: ['editor', 'code', 'edit'], icon: 'lucide:code-2', group: 'navigate' },
   { id: 'view-preview', label: 'Go to Preview', hint: 'Switch to the preview view', keywords: ['preview', 'browser', 'live'], icon: 'lucide:eye', group: 'navigate' },
-  { id: 'view-workflows', label: 'Go to Workflows', hint: 'Switch to the workflow view', keywords: ['workflow', 'automation', 'pipeline'], icon: 'lucide:workflow', group: 'navigate' },
-  { id: 'view-grid', label: 'Go to Grid', hint: 'Switch to the grid view', keywords: ['grid', 'layout', 'dashboard'], icon: 'lucide:layout-grid', group: 'navigate' },
+
   { id: 'view-git', label: 'Go to Source Control', hint: 'Switch to the git view', keywords: ['git', 'source', 'control', 'diff'], icon: 'lucide:git-branch', group: 'navigate' },
   { id: 'view-prs', label: 'Go to Pull Requests', hint: 'Switch to the PR view', keywords: ['pr', 'pull', 'request', 'review'], icon: 'lucide:git-pull-request', group: 'navigate' },
   { id: 'view-settings', label: 'Go to Settings', hint: 'Open settings panel', keywords: ['settings', 'preferences', 'config'], icon: 'lucide:settings', group: 'navigate' },
@@ -125,8 +123,7 @@ const VIEW_CONTEXT_COMMANDS: Partial<Record<ViewId, CommandId[]>> = {
   git: ['git-commit', 'git-push', 'git-pull', 'git-stash', 'toggle-terminal'],
   prs: ['pr-create', 'view-git', 'view-editor'],
   preview: ['preview-refresh', 'view-editor'],
-  workflows: ['view-editor', 'toggle-terminal'],
-  grid: ['view-editor', 'toggle-terminal'],
+
 }
 
 const RECENT_KEY = 'ce:recent-commands'
