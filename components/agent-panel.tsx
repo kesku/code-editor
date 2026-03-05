@@ -23,7 +23,7 @@ import {
   generateCommitMessageWithGateway,
   type CommitMessageChange,
 } from '@/lib/gateway-commit-message'
-import { MessageList } from '@/components/chat/message-list'
+import { MessageList, hasConversationMessages } from '@/components/chat/message-list'
 import { ChatInputBar } from '@/components/chat/chat-input-bar'
 import { emit, on } from '@/lib/events'
 import { copyToClipboard } from '@/lib/clipboard'
@@ -702,17 +702,20 @@ export function AgentPanel() {
     return attachCtx
   }, [contextAttachments, imageAttachments])
 
-  const buildSilentContext = useCallback(() => {
-    const context = buildContext()
-    const attachCtx = buildAttachmentContext()
-    const modePrefix =
-      agentMode === 'ask'
-        ? '[Mode: Ask — discuss and answer questions. Do not make code changes unless explicitly asked.]\n'
-        : agentMode === 'plan'
-          ? '[Mode: Plan — outline a step-by-step plan before making changes. Present the plan to the user for approval before executing.]\n'
-          : '[Mode: Agent — make direct code changes and edits autonomously.]\n'
-    return [modePrefix, context || '', attachCtx].filter(Boolean).join('\n\n')
-  }, [agentMode, buildAttachmentContext, buildContext])
+  const buildSilentContext = useCallback(
+    (mode: AgentMode = agentMode) => {
+      const context = buildContext()
+      const attachCtx = buildAttachmentContext()
+      const modePrefix =
+        mode === 'ask'
+          ? '[Mode: Ask — discuss and answer questions. Do not make code changes unless explicitly asked.]\n'
+          : mode === 'plan'
+            ? '[Mode: Plan — outline a step-by-step plan before making changes. Present the plan to the user for approval before executing.]\n'
+            : '[Mode: Agent — make direct code changes and edits autonomously.]\n'
+      return [modePrefix, context || '', attachCtx].filter(Boolean).join('\n\n')
+    },
+    [agentMode, buildAttachmentContext, buildContext],
+  )
 
   // ─── Message helpers ──────────────────────────────────────────
   // parsePlanSteps moved to components/chat/message-list.tsx
@@ -965,521 +968,526 @@ export function AgentPanel() {
   }, [appendMessage])
 
   // ─── Send message ─────────────────────────────────────────────
-  const sendMessage = useCallback(async () => {
-    const text = input.trim()
-    if (!text || sending) return
+  const sendMessage = useCallback(
+    async (rawText?: string, modeOverride?: AgentMode) => {
+      const text = (rawText ?? input).trim()
+      const modeForSend = modeOverride ?? agentMode
+      if (!text || sending) return
 
-    logChatDebug('send attempt', {
-      textLength: text.length,
-      mode: agentMode,
-      connected: isConnected,
-      gatewayStatus: status,
-      sessionKey,
-      attachmentCount: contextAttachments.length,
-      imageCount: imageAttachments.length,
-    })
-    setInput('')
-
-    // ─── Slash command interception ───────────────────────────
-    if (text.startsWith('/commit')) {
-      const commitMsg = text.replace(/^\/commit\s*/, '').trim()
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
+      logChatDebug('send attempt', {
+        textLength: text.length,
+        mode: modeForSend,
+        connected: isConnected,
+        gatewayStatus: status,
+        sessionKey,
+        attachmentCount: contextAttachments.length,
+        imageCount: imageAttachments.length,
       })
+      setInput('')
 
-      if (commitMsg) {
-        emit('agent-commit', { message: commitMsg })
+      // ─── Slash command interception ───────────────────────────
+      if (text.startsWith('/commit')) {
+        const commitMsg = text.replace(/^\/commit\s*/, '').trim()
         appendMessage({
           id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'Committing...',
+          role: 'user',
+          type: 'text',
+          content: text,
           timestamp: Date.now(),
         })
-        return
-      }
 
-      if (!isConnected) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Gateway disconnected — cannot generate commit message.',
-          timestamp: Date.now(),
-        })
-        return
-      }
-
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'status',
-        content: 'Generating commit message with gateway AI...',
-        timestamp: Date.now(),
-      })
-
-      try {
-        await ensureSessionInit()
-        const changes = await collectCommitChangesForGeneration()
-        if (changes.length === 0) {
+        if (commitMsg) {
+          emit('agent-commit', { message: commitMsg })
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'status',
-            content: 'No changes detected to commit.',
+            content: 'Committing...',
             timestamp: Date.now(),
           })
           return
         }
 
-        const generatedCommitMsg = await generateCommitMessageWithGateway({
-          sendRequest,
-          onEvent,
-          sessionKey,
-          repoFullName: repo?.fullName ?? local.remoteRepo ?? undefined,
-          branch: repo?.branch ?? local.gitInfo?.branch ?? undefined,
-          changes,
-        })
+        if (!isConnected) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Gateway disconnected — cannot generate commit message.',
+            timestamp: Date.now(),
+          })
+          return
+        }
 
         appendMessage({
           id: crypto.randomUUID(),
           role: 'system',
           type: 'status',
-          content: `Generated commit message: ${generatedCommitMsg}`,
+          content: 'Generating commit message with gateway AI...',
           timestamp: Date.now(),
         })
-        emit('agent-commit', { message: generatedCommitMsg })
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'Committing...',
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Generate commit message failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    if (text === '/changes') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      emit('open-changes-panel')
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'status',
-        content: 'Opening pre-commit review...',
-        timestamp: Date.now(),
-      })
-      return
-    }
-    if (text === '/diff') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      const changes = diffEngine.getChanges()
-      if (changes.length > 0) {
-        const summary = diffEngine.getSummary()
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `${summary.fileCount} file(s) changed: +${summary.additions} -${summary.deletions}\nFiles: ${changes.map((c) => c.path).join(', ')}`,
-          timestamp: Date.now(),
-        })
-      } else {
-        const dirtyFiles = files.filter((f) => f.dirty)
-        if (dirtyFiles.length > 0) {
+
+        try {
+          await ensureSessionInit()
+          const changes = await collectCommitChangesForGeneration()
+          if (changes.length === 0) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'status',
+              content: 'No changes detected to commit.',
+              timestamp: Date.now(),
+            })
+            return
+          }
+
+          const generatedCommitMsg = await generateCommitMessageWithGateway({
+            sendRequest,
+            onEvent,
+            sessionKey,
+            repoFullName: repo?.fullName ?? local.remoteRepo ?? undefined,
+            branch: repo?.branch ?? local.gitInfo?.branch ?? undefined,
+            changes,
+          })
+
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'status',
-            content: `${dirtyFiles.length} unsaved file(s): ${dirtyFiles.map((f) => f.path).join(', ')}`,
+            content: `Generated commit message: ${generatedCommitMsg}`,
+            timestamp: Date.now(),
+          })
+          emit('agent-commit', { message: generatedCommitMsg })
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: 'Committing...',
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Generate commit message failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+      if (text === '/changes') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        emit('open-changes-panel')
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'status',
+          content: 'Opening pre-commit review...',
+          timestamp: Date.now(),
+        })
+        return
+      }
+      if (text === '/diff') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        const changes = diffEngine.getChanges()
+        if (changes.length > 0) {
+          const summary = diffEngine.getSummary()
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `${summary.fileCount} file(s) changed: +${summary.additions} -${summary.deletions}\nFiles: ${changes.map((c) => c.path).join(', ')}`,
             timestamp: Date.now(),
           })
         } else {
-          appendMessage({
-            id: crypto.randomUUID(),
-            role: 'system',
-            type: 'status',
-            content: 'No changes detected.',
-            timestamp: Date.now(),
-          })
+          const dirtyFiles = files.filter((f) => f.dirty)
+          if (dirtyFiles.length > 0) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'status',
+              content: `${dirtyFiles.length} unsaved file(s): ${dirtyFiles.map((f) => f.path).join(', ')}`,
+              timestamp: Date.now(),
+            })
+          } else {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'status',
+              content: 'No changes detected.',
+              timestamp: Date.now(),
+            })
+          }
         }
-      }
-      return
-    }
-    if (text === '/unstage') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Unstage requires a local git repository.',
-          timestamp: Date.now(),
-        })
         return
       }
-      const staged = local.gitInfo.status?.filter((s) => s.status !== '??').map((s) => s.path) ?? []
-      if (staged.length === 0) {
+      if (text === '/unstage') {
         appendMessage({
           id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'No staged files to unstage.',
+          role: 'user',
+          type: 'text',
+          content: text,
           timestamp: Date.now(),
         })
-        return
-      }
-      try {
-        await local.unstageFiles(staged)
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `Unstaged ${staged.length} file(s).`,
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Unstage failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    if (text === '/undo') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Undo commit requires a local git repository.',
-          timestamp: Date.now(),
-        })
-        return
-      }
-      try {
-        await local.undoLastCommit()
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'Undid last commit. Changes are back in the working tree.',
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Undo failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    if (text === '/push') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Push requires a local git repository.',
-          timestamp: Date.now(),
-        })
-        return
-      }
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'status',
-        content: `Pushing ${local.gitInfo.branch} to origin...`,
-        timestamp: Date.now(),
-      })
-      try {
-        await local.push()
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `Pushed ${local.gitInfo.branch} to origin.`,
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Push failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-
-    const parsedSkillCommand = parseSkillSlashCommand(text)
-    if (parsedSkillCommand) {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-
-      if (parsedSkillCommand.kind === 'help') {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: buildSkillCommandHelp(),
-          timestamp: Date.now(),
-        })
-        return
-      }
-
-      if (parsedSkillCommand.kind === 'list') {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: buildCatalogSummary(SKILLS_CATALOG),
-          timestamp: Date.now(),
-        })
-        return
-      }
-
-      if (parsedSkillCommand.kind === 'use') {
-        const skill = parsedSkillCommand.skillSlug
-          ? getSkillBySlug(parsedSkillCommand.skillSlug)
-          : undefined
-        if (!skill) {
+        if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'error',
-            content: `Unknown skill: ${parsedSkillCommand.skillSlug ?? 'unknown'}`,
+            content: 'Unstage requires a local git repository.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        const staged =
+          local.gitInfo.status?.filter((s) => s.status !== '??').map((s) => s.path) ?? []
+        if (staged.length === 0) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: 'No staged files to unstage.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        try {
+          await local.unstageFiles(staged)
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `Unstaged ${staged.length} file(s).`,
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Unstage failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+      if (text === '/undo') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Undo commit requires a local git repository.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        try {
+          await local.undoLastCommit()
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: 'Undid last commit. Changes are back in the working tree.',
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Undo failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+      if (text === '/push') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Push requires a local git repository.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'status',
+          content: `Pushing ${local.gitInfo.branch} to origin...`,
+          timestamp: Date.now(),
+        })
+        try {
+          await local.push()
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `Pushed ${local.gitInfo.branch} to origin.`,
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Push failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+
+      const parsedSkillCommand = parseSkillSlashCommand(text)
+      if (parsedSkillCommand) {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+
+        if (parsedSkillCommand.kind === 'help') {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: buildSkillCommandHelp(),
             timestamp: Date.now(),
           })
           return
         }
 
-        const attachLabels: string[] = []
-        for (const att of contextAttachments) {
-          attachLabels.push(
-            att.type === 'selection'
-              ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
-              : `📄 ${att.path.split('/').pop()}`,
-          )
-        }
-        for (const img of imageAttachments) {
-          attachLabels.push(`🖼 ${img.name}`)
-        }
-        const request = parsedSkillCommand.request?.trim() || skill.starterPrompt
-        const envelope = buildSkillUseEnvelope({
-          skill,
-          request,
-          modelName: modelInfo.current,
-        })
-        const displayText =
-          attachLabels.length > 0
-            ? `[${attachLabels.join(' · ')}]\n/skill use ${skill.slug} ${request}`
-            : `/skill use ${skill.slug} ${request}`
-        const outboundMessage = buildGatewayMessage(envelope.prompt, buildSilentContext())
-        const messageImages =
-          imageAttachments.length > 0
-            ? imageAttachments.map((img) => ({ name: img.name, dataUrl: img.dataUrl }))
-            : undefined
-
-        setSending(true)
-        streamStateRef.current.isSending = true
-        try {
-          await sendStructuredGatewayMessage({
-            displayText,
-            outboundMessage,
-            images: messageImages,
+        if (parsedSkillCommand.kind === 'list') {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: buildCatalogSummary(SKILLS_CATALOG),
+            timestamp: Date.now(),
           })
-        } catch (err) {
+          return
+        }
+
+        if (parsedSkillCommand.kind === 'use') {
+          const skill = parsedSkillCommand.skillSlug
+            ? getSkillBySlug(parsedSkillCommand.skillSlug)
+            : undefined
+          if (!skill) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'error',
+              content: `Unknown skill: ${parsedSkillCommand.skillSlug ?? 'unknown'}`,
+              timestamp: Date.now(),
+            })
+            return
+          }
+
+          const attachLabels: string[] = []
+          for (const att of contextAttachments) {
+            attachLabels.push(
+              att.type === 'selection'
+                ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
+                : `📄 ${att.path.split('/').pop()}`,
+            )
+          }
+          for (const img of imageAttachments) {
+            attachLabels.push(`🖼 ${img.name}`)
+          }
+          const request = parsedSkillCommand.request?.trim() || skill.starterPrompt
+          const envelope = buildSkillUseEnvelope({
+            skill,
+            request,
+            modelName: modelInfo.current,
+          })
+          const displayText =
+            attachLabels.length > 0
+              ? `[${attachLabels.join(' · ')}]\n/skill use ${skill.slug} ${request}`
+              : `/skill use ${skill.slug} ${request}`
+          const outboundMessage = buildGatewayMessage(envelope.prompt, buildSilentContext())
+          const messageImages =
+            imageAttachments.length > 0
+              ? imageAttachments.map((img) => ({ name: img.name, dataUrl: img.dataUrl }))
+              : undefined
+
+          setSending(true)
+          streamStateRef.current.isSending = true
+          try {
+            await sendStructuredGatewayMessage({
+              displayText,
+              outboundMessage,
+              images: messageImages,
+            })
+          } catch (err) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'error',
+              content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+              timestamp: Date.now(),
+            })
+            setIsStreaming(false)
+            setSending(false)
+            streamStateRef.current.isSending = false
+          }
+          return
+        }
+
+        const plan = buildExecutionPlan(parsedSkillCommand, { preferTerminal: isTauri() })
+        if (!plan) {
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'error',
-            content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+            content: 'Could not build a skill workflow for that request.',
             timestamp: Date.now(),
           })
-          setIsStreaming(false)
-          setSending(false)
-          streamStateRef.current.isSending = false
+          return
+        }
+
+        if (plan.target === 'terminal' && plan.command) {
+          emit('show-terminal')
+          emit('run-command-in-terminal', { command: plan.command })
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `${plan.label} started in the desktop terminal.`,
+            timestamp: Date.now(),
+          })
+          return
+        }
+
+        if (plan.message) {
+          setSending(true)
+          streamStateRef.current.isSending = true
+          try {
+            await sendStructuredGatewayMessage({
+              displayText: text,
+              outboundMessage: plan.message,
+              preserveAttachments: true,
+            })
+          } catch (err) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'error',
+              content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+              timestamp: Date.now(),
+            })
+            setIsStreaming(false)
+            setSending(false)
+            streamStateRef.current.isSending = false
+          }
         }
         return
       }
 
-      const plan = buildExecutionPlan(parsedSkillCommand, { preferTerminal: isTauri() })
-      if (!plan) {
+      if (!enforceSkillFirstPolicy(text)) {
+        return
+      }
+
+      setSending(true)
+      streamStateRef.current.isSending = true
+
+      // Build visual label for attachments
+      const attachLabels: string[] = []
+      for (const att of contextAttachments) {
+        attachLabels.push(
+          att.type === 'selection'
+            ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
+            : `📄 ${att.path.split('/').pop()}`,
+        )
+      }
+      for (const img of imageAttachments) {
+        attachLabels.push(`🖼 ${img.name}`)
+      }
+      const displayText = attachLabels.length > 0 ? `[${attachLabels.join(' · ')}]\n${text}` : text
+      const messageImages =
+        imageAttachments.length > 0
+          ? imageAttachments.map((img) => ({ name: img.name, dataUrl: img.dataUrl }))
+          : undefined
+      try {
+        const outboundMessage = buildGatewayMessage(text, buildSilentContext(modeForSend))
+        await sendStructuredGatewayMessage({
+          displayText,
+          outboundMessage,
+          images: messageImages,
+        })
+      } catch (err) {
+        logChatDebug('chat.send failed', {
+          error: err instanceof Error ? err.message : String(err),
+          sessionKey,
+        })
         appendMessage({
           id: crypto.randomUUID(),
           role: 'system',
           type: 'error',
-          content: 'Could not build a skill workflow for that request.',
+          content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
           timestamp: Date.now(),
         })
-        return
+        setIsStreaming(false)
+        setSending(false)
+        streamStateRef.current.isSending = false
       }
-
-      if (plan.target === 'terminal' && plan.command) {
-        emit('show-terminal')
-        emit('run-command-in-terminal', { command: plan.command })
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `${plan.label} started in the desktop terminal.`,
-          timestamp: Date.now(),
-        })
-        return
-      }
-
-      if (plan.message) {
-        setSending(true)
-        streamStateRef.current.isSending = true
-        try {
-          await sendStructuredGatewayMessage({
-            displayText: text,
-            outboundMessage: plan.message,
-            preserveAttachments: true,
-          })
-        } catch (err) {
-          appendMessage({
-            id: crypto.randomUUID(),
-            role: 'system',
-            type: 'error',
-            content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
-            timestamp: Date.now(),
-          })
-          setIsStreaming(false)
-          setSending(false)
-          streamStateRef.current.isSending = false
-        }
-      }
-      return
-    }
-
-    if (!enforceSkillFirstPolicy(text)) {
-      return
-    }
-
-    setSending(true)
-    streamStateRef.current.isSending = true
-
-    // Build visual label for attachments
-    const attachLabels: string[] = []
-    for (const att of contextAttachments) {
-      attachLabels.push(
-        att.type === 'selection'
-          ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
-          : `📄 ${att.path.split('/').pop()}`,
-      )
-    }
-    for (const img of imageAttachments) {
-      attachLabels.push(`🖼 ${img.name}`)
-    }
-    const displayText = attachLabels.length > 0 ? `[${attachLabels.join(' · ')}]\n${text}` : text
-    const messageImages =
-      imageAttachments.length > 0
-        ? imageAttachments.map((img) => ({ name: img.name, dataUrl: img.dataUrl }))
-        : undefined
-    try {
-      const outboundMessage = buildGatewayMessage(text, buildSilentContext())
-      await sendStructuredGatewayMessage({
-        displayText,
-        outboundMessage,
-        images: messageImages,
-      })
-    } catch (err) {
-      logChatDebug('chat.send failed', {
-        error: err instanceof Error ? err.message : String(err),
-        sessionKey,
-      })
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'error',
-        content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        timestamp: Date.now(),
-      })
-      setIsStreaming(false)
-      setSending(false)
-      streamStateRef.current.isSending = false
-    }
-  }, [
-    input,
-    sending,
-    agentMode,
-    isConnected,
-    status,
-    sessionKey,
-    contextAttachments,
-    imageAttachments,
-    local,
-    repo,
-    files,
-    sendRequest,
-    onEvent,
-    buildContext,
-    buildSilentContext,
-    appendMessage,
-    ensureSessionInit,
-    collectCommitChangesForGeneration,
-    logChatDebug,
-    enforceSkillFirstPolicy,
-    modelInfo.current,
-    sendStructuredGatewayMessage,
-  ])
+    },
+    [
+      input,
+      sending,
+      agentMode,
+      isConnected,
+      status,
+      sessionKey,
+      contextAttachments,
+      imageAttachments,
+      local,
+      repo,
+      files,
+      sendRequest,
+      onEvent,
+      buildContext,
+      buildSilentContext,
+      appendMessage,
+      ensureSessionInit,
+      collectCommitChangesForGeneration,
+      logChatDebug,
+      enforceSkillFirstPolicy,
+      modelInfo.current,
+      sendStructuredGatewayMessage,
+    ],
+  )
 
   // ─── Handle ⌘K inline edit requests ────────────────────────────
   useEffect(() => {
@@ -1770,8 +1778,7 @@ export function AgentPanel() {
         if (userIdx < 0) return prev
         const userMsg = prev[userIdx]
         queueMicrotask(() => {
-          setInput(userMsg.content)
-          setTimeout(() => sendMessage(), 50)
+          void sendMessage(userMsg.content)
         })
         return prev.slice(0, idx)
       })
@@ -1841,6 +1848,7 @@ export function AgentPanel() {
       .find((m) => m.role === 'user')
       ?.content.slice(0, 50)
       .replace(/\n/g, ' ') || null
+  const conversationStarted = hasConversationMessages(messages)
 
   return (
     <div
@@ -1885,7 +1893,7 @@ export function AgentPanel() {
         modelName={modelInfo.current || undefined}
         contextTokens={contextTokens}
       />
-      {messages.length > 0 && (
+      {conversationStarted && (
         <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-1 shrink-0">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* Font size controls */}
@@ -1948,19 +1956,16 @@ export function AgentPanel() {
       )}
 
       {/* Empty states — full bleed */}
-      {messages.length === 0 && !isConnected && (
+      {!conversationStarted && !isConnected && (
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <AgentConnectPrompt />
         </div>
       )}
-      {messages.length === 0 && isConnected && (
+      {!conversationStarted && isConnected && (
         <ChatHome
           onSend={(text, mode) => {
             setAgentMode(mode)
-            setInput(text)
-            setTimeout(() => {
-              sendMessage()
-            }, 50)
+            void sendMessage(text, mode)
           }}
           onSelectFolder={() => emit('open-folder')}
           onCloneRepo={() => emit('open-folder')}
@@ -1971,7 +1976,7 @@ export function AgentPanel() {
       )}
 
       {/* Messages */}
-      {messages.length > 0 && (
+      {conversationStarted && (
         <MessageList
           messages={messages}
           streamBuffer={streamBuffer}
@@ -1988,7 +1993,7 @@ export function AgentPanel() {
       )}
 
       {/* Input section — hidden when ChatHome is showing */}
-      {(messages.length > 0 || !isConnected) && (
+      {(conversationStarted || !isConnected) && (
         <ChatInputBar
           input={input}
           setInput={setInput}
