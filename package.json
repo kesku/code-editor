@@ -21,6 +21,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "secrets:scan": "scripts/secrets-scan.sh history",
+    "secrets:scan:staged": "scripts/secrets-scan.sh staged",
+    "secrets:baseline": "scripts/secrets-scan.sh baseline",
     "prepare": "husky"
   },
   "lint-staged": {

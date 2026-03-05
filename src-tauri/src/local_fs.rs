@@ -1,4 +1,5 @@
 use serde::Serialize;
+use keyring::{Entry, Error as KeyringError};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -398,5 +399,35 @@ pub fn local_git_ahead_behind(root: String, branch: String) -> Result<(u32, u32)
             }
         }
         Err(_) => Ok((0, 0)),
+    }
+}
+
+#[tauri::command]
+pub fn local_secret_set(service: String, account: String, secret: String) -> Result<(), String> {
+    let entry = Entry::new(&service, &account)
+        .map_err(|e| format!("Failed to open keyring entry: {}", e))?;
+    entry
+        .set_password(&secret)
+        .map_err(|e| format!("Failed to store secret: {}", e))
+}
+
+#[tauri::command]
+pub fn local_secret_get(service: String, account: String) -> Result<Option<String>, String> {
+    let entry = Entry::new(&service, &account)
+        .map_err(|e| format!("Failed to open keyring entry: {}", e))?;
+    match entry.get_password() {
+        Ok(secret) => Ok(Some(secret)),
+        Err(KeyringError::NoEntry) => Ok(None),
+        Err(e) => Err(format!("Failed to read secret: {}", e)),
+    }
+}
+
+#[tauri::command]
+pub fn local_secret_delete(service: String, account: String) -> Result<(), String> {
+    let entry = Entry::new(&service, &account)
+        .map_err(|e| format!("Failed to open keyring entry: {}", e))?;
+    match entry.delete_credential() {
+        Ok(()) | Err(KeyringError::NoEntry) => Ok(()),
+        Err(e) => Err(format!("Failed to delete secret: {}", e)),
     }
 }

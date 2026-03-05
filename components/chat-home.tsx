@@ -19,8 +19,15 @@ const STATIC_SUGGESTIONS = [
   { icon: 'lucide:wand-2', label: 'Test it', prefix: 'Write tests for ' },
   { icon: 'lucide:star', label: 'Review PR', prefix: 'Review ' },
 ]
+const TOKEN_REVEAL_TIMEOUT_MS = 15000
 
-function IconButton({ icon, title, size = 14, onClick, className = '' }: {
+function IconButton({
+  icon,
+  title,
+  size = 14,
+  onClick,
+  className = '',
+}: {
   icon: string
   title: string
   size?: number
@@ -52,6 +59,7 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
   const [showTokenInput, setShowTokenInput] = useState(false)
   const [tokenDraft, setTokenDraft] = useState('')
   const [tokenRevealed, setTokenRevealed] = useState(false)
+  const [tokenCopied, setTokenCopied] = useState(false)
   const [ghSectionOpen, setGhSectionOpen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -61,7 +69,10 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
   const { token: ghToken, authenticated, setManualToken, clearToken } = useGitHubAuth()
   const { files: openFiles } = useEditor()
 
-  const repoShort = useMemo(() => repo?.fullName?.split('/').pop() ?? local.rootPath?.split('/').pop() ?? null, [repo?.fullName, local.rootPath])
+  const repoShort = useMemo(
+    () => repo?.fullName?.split('/').pop() ?? local.rootPath?.split('/').pop() ?? null,
+    [repo?.fullName, local.rootPath],
+  )
   const hasWorkspace = !!repoShort
 
   const [recentFolders, setRecentFolders] = useState<string[]>(() => getRecentFolders())
@@ -74,6 +85,18 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
     const t = setTimeout(() => inputRef.current?.focus(), 100)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    if (!tokenRevealed) return
+    const timer = setTimeout(() => setTokenRevealed(false), TOKEN_REVEAL_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [tokenRevealed])
+
+  useEffect(() => {
+    if (!tokenCopied) return
+    const timer = setTimeout(() => setTokenCopied(false), 1600)
+    return () => clearTimeout(timer)
+  }, [tokenCopied])
 
   // Auto-resize textarea
   useEffect(() => {
@@ -97,16 +120,45 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
     setTokenDraft('')
     setShowTokenInput(false)
     setTokenRevealed(false)
+    setTokenCopied(false)
   }, [tokenDraft, setManualToken])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleSubmit() }
-    if (e.key === 'Tab' && !input.trim()) {
-      e.preventDefault()
-      setAgentMode(m => m === 'ask' ? 'agent' : 'ask')
+  const handleToggleReveal = useCallback(() => {
+    if (tokenRevealed) {
+      setTokenRevealed(false)
+      return
     }
-  }, [handleSubmit, input])
+    const ok = window.confirm('Reveal token for 15 seconds? Avoid this while screen sharing.')
+    if (ok) setTokenRevealed(true)
+  }, [tokenRevealed])
+
+  const handleCopyToken = useCallback(async () => {
+    if (!ghToken) return
+    try {
+      await navigator.clipboard.writeText(ghToken)
+      setTokenCopied(true)
+    } catch {
+      // Ignore clipboard errors (unsupported context or denied permission).
+    }
+  }, [ghToken])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleSubmit()
+      }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        handleSubmit()
+      }
+      if (e.key === 'Tab' && !input.trim()) {
+        e.preventDefault()
+        setAgentMode((m) => (m === 'ask' ? 'agent' : 'ask'))
+      }
+    },
+    [handleSubmit, input],
+  )
 
   const maskedToken = ghToken
     ? `${ghToken.slice(0, 4)}${'•'.repeat(Math.min(ghToken.length - 8, 24))}${ghToken.slice(-4)}`
@@ -122,19 +174,28 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
     if (openFiles.length > 0) {
       const recent = openFiles[openFiles.length - 1]
       const name = recent.path.split('/').pop() || recent.path
-      contextChips.push({ icon: 'lucide:sparkles', label: `Edit ${name}`, prefix: `Edit ${recent.path} ` })
+      contextChips.push({
+        icon: 'lucide:sparkles',
+        label: `Edit ${name}`,
+        prefix: `Edit ${recent.path} `,
+      })
     }
 
     // Suggest explaining a notable file from the tree
-    const treeFiles = local.localTree?.filter(e => !e.is_dir) ?? []
-    const interesting = treeFiles.find(f =>
-      /\.(ts|tsx|rs|py|go)$/.test(f.path) &&
-      !f.path.includes('node_modules') &&
-      !f.path.includes('.lock')
+    const treeFiles = local.localTree?.filter((e) => !e.is_dir) ?? []
+    const interesting = treeFiles.find(
+      (f) =>
+        /\.(ts|tsx|rs|py|go)$/.test(f.path) &&
+        !f.path.includes('node_modules') &&
+        !f.path.includes('.lock'),
     )
     if (interesting) {
       const name = interesting.path.split('/').pop() || interesting.path
-      contextChips.push({ icon: 'lucide:flame', label: `Explain ${name}`, prefix: `Explain ${interesting.path} ` })
+      contextChips.push({
+        icon: 'lucide:flame',
+        label: `Explain ${name}`,
+        prefix: `Explain ${interesting.path} `,
+      })
     }
 
     // Always include some generic actions
@@ -159,7 +220,10 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
             {repoShort ? `What should we work on?` : `What do you want to build?`}
           </h1>
           {hasWorkspace ? (
-            <button onClick={onSelectFolder} className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer">
+            <button
+              onClick={onSelectFolder}
+              className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] text-[var(--text-disabled)] hover:text-[var(--text-tertiary)] transition-colors cursor-pointer"
+            >
               <Icon icon="lucide:folder-git-2" width={11} height={11} />
               {repoShort}
             </button>
@@ -182,12 +246,16 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
           <textarea
             ref={inputRef}
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             onKeyDown={handleKeyDown}
-            placeholder={repoShort ? `Ask anything about ${repoShort}…` : 'Describe what you want to build…'}
-            aria-label={repoShort ? `Ask anything about ${repoShort}` : 'Describe what you want to build'}
+            placeholder={
+              repoShort ? `Ask anything about ${repoShort}…` : 'Describe what you want to build…'
+            }
+            aria-label={
+              repoShort ? `Ask anything about ${repoShort}` : 'Describe what you want to build'
+            }
             className="w-full bg-transparent px-4 pt-3 pb-1 text-[14px] leading-[1.6] text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none resize-none min-h-[48px] max-h-[200px] overflow-y-auto"
           />
 
@@ -223,7 +291,10 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
           {suggestions.map((a, i) => (
             <button
               key={a.label}
-              onClick={() => { setInput(a.prefix); inputRef.current?.focus() }}
+              onClick={() => {
+                setInput(a.prefix)
+                inputRef.current?.focus()
+              }}
               aria-label={`${a.label}: ${a.prefix}`}
               className="anime-chip chip-enter flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium bg-[color-mix(in_srgb,var(--brand)_8%,var(--bg-elevated))] text-[var(--text-secondary)] border border-[color-mix(in_srgb,var(--brand)_12%,var(--border))] hover:text-[var(--text-primary)] hover:bg-[color-mix(in_srgb,var(--brand)_14%,var(--bg-elevated))] hover:border-[color-mix(in_srgb,var(--brand)_30%,var(--border))] hover:scale-105 active:scale-95 transition-all cursor-pointer"
               style={{ animationDelay: `${i * 0.08}s` }}
@@ -239,7 +310,9 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
           <div className="mt-5 space-y-3">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-[var(--border)]" />
-              <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-disabled)] font-medium">Get started</span>
+              <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-disabled)] font-medium">
+                Get started
+              </span>
               <div className="flex-1 h-px bg-[var(--border)]" />
             </div>
 
@@ -263,9 +336,11 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
             {/* Recent folders */}
             {recentFolders.length > 0 && (
               <div className="mt-3">
-                <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-disabled)] font-medium mb-2 text-center">Recent</p>
+                <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-disabled)] font-medium mb-2 text-center">
+                  Recent
+                </p>
                 <div className="flex flex-col gap-0.5">
-                  {recentFolders.slice(0, 3).map(folder => {
+                  {recentFolders.slice(0, 3).map((folder) => {
                     const name = folder.split('/').pop() || folder
                     const parent = folder.split('/').slice(0, -1).join('/') || '/'
                     return (
@@ -274,10 +349,19 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                         onClick={() => local.setRootPath(folder)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-left hover:bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] transition-colors cursor-pointer group"
                       >
-                        <Icon icon="lucide:folder" width={14} height={14} className="text-[var(--text-disabled)] group-hover:text-[var(--text-tertiary)] shrink-0" />
+                        <Icon
+                          icon="lucide:folder"
+                          width={14}
+                          height={14}
+                          className="text-[var(--text-disabled)] group-hover:text-[var(--text-tertiary)] shrink-0"
+                        />
                         <div className="min-w-0">
-                          <div className="text-[12px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate">{name}</div>
-                          <div className="text-[10px] text-[var(--text-disabled)] truncate">{parent}</div>
+                          <div className="text-[12px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate">
+                            {name}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-disabled)] truncate">
+                            {parent}
+                          </div>
                         </div>
                       </button>
                     )
@@ -289,14 +373,25 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
             {/* GitHub Token — collapsed by default */}
             <div className="mt-4">
               <button
-                onClick={() => setGhSectionOpen(v => !v)}
+                onClick={() => setGhSectionOpen((v) => !v)}
                 className="w-full flex items-center gap-3 cursor-pointer group"
               >
                 <div className="flex-1 h-px bg-[var(--border)]" />
                 <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.08em] text-[var(--text-disabled)] font-medium group-hover:text-[var(--text-tertiary)] transition-colors">
                   GitHub
-                  {authenticated && <Icon icon="lucide:check-circle" width={10} height={10} className="text-[var(--success)]" />}
-                  <Icon icon={ghSectionOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'} width={10} height={10} />
+                  {authenticated && (
+                    <Icon
+                      icon="lucide:check-circle"
+                      width={10}
+                      height={10}
+                      className="text-[var(--success)]"
+                    />
+                  )}
+                  <Icon
+                    icon={ghSectionOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+                    width={10}
+                    height={10}
+                  />
                 </span>
                 <div className="flex-1 h-px bg-[var(--border)]" />
               </button>
@@ -305,18 +400,33 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                 <div className="mt-2">
                   {authenticated ? (
                     <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)]">
-                      <Icon icon="lucide:check-circle" width={14} height={14} className="text-[var(--success)] shrink-0" />
+                      <Icon
+                        icon="lucide:check-circle"
+                        width={14}
+                        height={14}
+                        className="text-[var(--success)] shrink-0"
+                      />
                       <span className="text-[12px] text-[var(--text-secondary)] flex-1 font-mono truncate">
                         {tokenRevealed ? ghToken : maskedToken}
                       </span>
                       <IconButton
+                        icon={tokenCopied ? 'lucide:check' : 'lucide:copy'}
+                        title={tokenCopied ? 'Copied' : 'Copy token'}
+                        size={13}
+                        onClick={handleCopyToken}
+                      />
+                      <IconButton
                         icon={tokenRevealed ? 'lucide:eye-off' : 'lucide:eye'}
                         title={tokenRevealed ? 'Hide token' : 'Reveal token'}
                         size={13}
-                        onClick={() => setTokenRevealed(v => !v)}
+                        onClick={handleToggleReveal}
                       />
                       <button
-                        onClick={() => { clearToken(); setTokenRevealed(false) }}
+                        onClick={() => {
+                          clearToken()
+                          setTokenRevealed(false)
+                          setTokenCopied(false)
+                        }}
                         className="p-1 rounded-md hover:bg-[color-mix(in_srgb,var(--error)_10%,transparent)] text-[var(--text-disabled)] hover:text-[var(--error)] transition-colors cursor-pointer"
                         title="Remove token"
                         aria-label="Remove token"
@@ -327,12 +437,24 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                   ) : showTokenInput ? (
                     <div className="flex items-center gap-1.5">
                       <div className="flex-1 flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] px-3 py-2 focus-within:border-[var(--border-focus)] transition-colors">
-                        <Icon icon="lucide:key" width={13} height={13} className="text-[var(--text-disabled)] shrink-0" />
+                        <Icon
+                          icon="lucide:key"
+                          width={13}
+                          height={13}
+                          className="text-[var(--text-disabled)] shrink-0"
+                        />
                         <input
                           type={tokenRevealed ? 'text' : 'password'}
                           value={tokenDraft}
-                          onChange={e => setTokenDraft(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleSaveToken(); if (e.key === 'Escape') { setShowTokenInput(false); setTokenDraft(''); setTokenRevealed(false) } }}
+                          onChange={(e) => setTokenDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveToken()
+                            if (e.key === 'Escape') {
+                              setShowTokenInput(false)
+                              setTokenDraft('')
+                              setTokenRevealed(false)
+                            }
+                          }}
                           placeholder="ghp_... or github_pat_..."
                           autoFocus
                           className="flex-1 bg-transparent text-[12px] font-mono text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none min-w-0"
@@ -344,7 +466,7 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                           icon={tokenRevealed ? 'lucide:eye-off' : 'lucide:eye'}
                           title={tokenRevealed ? 'Hide' : 'Reveal'}
                           size={13}
-                          onClick={() => setTokenRevealed(v => !v)}
+                          onClick={() => setTokenRevealed((v) => !v)}
                         />
                       </div>
                       <button
@@ -362,7 +484,11 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                         icon="lucide:x"
                         title="Cancel"
                         size={13}
-                        onClick={() => { setShowTokenInput(false); setTokenDraft(''); setTokenRevealed(false) }}
+                        onClick={() => {
+                          setShowTokenInput(false)
+                          setTokenDraft('')
+                          setTokenRevealed(false)
+                        }}
                       />
                     </div>
                   ) : (
@@ -375,7 +501,13 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                     </button>
                   )}
                   <p className="text-[10px] text-[var(--text-disabled)] text-center mt-2">
-                    {authenticated ? 'Token saved locally. Never sent to any server.' : 'Required for remote repos. Generate at github.com/settings/tokens'}
+                    {authenticated
+                      ? tokenRevealed
+                        ? 'Token reveal auto-hides after 15s. Avoid screen sharing.'
+                        : tokenCopied
+                          ? 'Token copied to clipboard.'
+                          : 'Desktop stores token in OS keychain. Web keeps token in memory only.'
+                      : 'Required for remote repos. Generate at github.com/settings/tokens'}
                   </p>
                 </div>
               )}

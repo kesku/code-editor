@@ -13,6 +13,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install gitleaks
+        run: GOBIN="$RUNNER_TEMP/bin" go install github.com/zricethezav/gitleaks/v8@latest
+
+      - name: Secret scan (full history + baseline)
+        run: "$RUNNER_TEMP/bin/gitleaks" git --log-opts="--all" --redact --baseline-path .gitleaks.baseline.json --exit-code 1 .
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4

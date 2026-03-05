@@ -29,14 +29,14 @@ git push -u origin feat/my-feature
 
 ## Branch Naming
 
-| Prefix      | Use for                              |
-| ----------- | ------------------------------------ |
-| `feat/`     | New features                         |
-| `fix/`      | Bug fixes                            |
-| `docs/`     | Documentation changes                |
-| `chore/`    | Maintenance, deps, CI                |
+| Prefix      | Use for                                 |
+| ----------- | --------------------------------------- |
+| `feat/`     | New features                            |
+| `fix/`      | Bug fixes                               |
+| `docs/`     | Documentation changes                   |
+| `chore/`    | Maintenance, deps, CI                   |
 | `refactor/` | Code restructuring (no behavior change) |
-| `test/`     | Adding or updating tests             |
+| `test/`     | Adding or updating tests                |
 
 ## Commit Messages
 
@@ -61,10 +61,31 @@ pnpm format        # auto-format all files
 ```
 
 Key conventions:
+
 - TypeScript strict mode — no `any` unless justified
 - Colors via CSS theme variables, never hardcoded
 - `@iconify/react` for all icons (Lucide set)
 - `pnpm` only — never npm or yarn
+
+## Secret Scanning
+
+This repo uses `gitleaks` for local hooks and CI history scanning with a versioned baseline at `.gitleaks.baseline.json`.
+
+Install `gitleaks` once:
+
+```bash
+brew install gitleaks
+```
+
+Useful commands:
+
+```bash
+pnpm secrets:scan          # full git history scan (uses baseline)
+pnpm secrets:scan:staged   # staged changes scan (hook mode)
+pnpm secrets:baseline      # regenerate baseline intentionally
+```
+
+Incident response and privacy guidance lives in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Testing
 
@@ -86,6 +107,7 @@ pnpm test:coverage # with coverage report
 ## Issues
 
 Use the issue templates when filing bugs or requesting features. For bugs, include:
+
 - Steps to reproduce
 - Expected vs actual behavior
 - Environment (macOS Desktop / Web Browser)

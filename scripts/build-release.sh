@@ -90,18 +90,14 @@ verify() {
     ((PASS++))
   fi
 
-  # 6. No secrets in source
-  log "Secret scan…"
-  LEAKED=$(grep -rn "ghp_[a-zA-Z0-9]\{20\}\|github_pat_[a-zA-Z0-9]\{20\}\|sk-[a-zA-Z0-9]\{20\}\|AKIA[A-Z0-9]\{16\}\|-----BEGIN.*PRIVATE KEY" \
-    --include="*.tsx" --include="*.ts" --include="*.js" \
-    components/ context/ lib/ app/ 2>/dev/null \
-    | grep -v ".env" | grep -v "placeholder" | grep -v "ghp_..." | grep -v "ghp_xxxx" | head -5 || true)
-  if [ -z "$LEAKED" ]; then
-    ok "No secrets detected in source"
+  # 6. No secrets in git history
+  log "Secret scan (gitleaks)…"
+  if pnpm secrets:scan &>/dev/null; then
+    ok "No new secrets detected"
     ((PASS++))
   else
-    warn "Possible secrets found:"
-    echo "$LEAKED"
+    warn "Potential secret findings detected:"
+    pnpm secrets:scan || true
     ((FAIL++))
   fi
 

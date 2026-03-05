@@ -56,26 +56,27 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the technical architecture,
 
 ## Documentation
 
-| Doc | Description |
-|-----|-------------|
-| [FEATURES.md](docs/FEATURES.md) | Feature list, status, and roadmap |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Technical architecture and component map |
-| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Development workflow and conventions |
-| [DESKTOP.md](docs/DESKTOP.md) | Tauri desktop build details |
-| [AGENT.md](docs/AGENT.md) | AI agent integration |
-| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes |
+| Doc                                           | Description                                                   |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| [FEATURES.md](docs/FEATURES.md)               | Feature list, status, and roadmap                             |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)       | Technical architecture and component map                      |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md)         | Development workflow and conventions                          |
+| [DESKTOP.md](docs/DESKTOP.md)                 | Tauri desktop build details                                   |
+| [AGENT.md](docs/AGENT.md)                     | AI agent integration                                          |
+| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes                                       |
+| [SECURITY.md](docs/SECURITY.md)               | Secret handling, incident response, and author privacy policy |
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `⌘P` | Quick file open (fuzzy search) |
-| `⌘K` | Inline edit at selection |
-| `⌘B` | Toggle file explorer |
-| `⌘J` | Toggle agent panel |
-| `?` | Keyboard shortcuts overlay |
-| `Enter` | Send message (in agent panel) |
-| `Esc` | Close overlays |
+| Shortcut | Action                         |
+| -------- | ------------------------------ |
+| `⌘P`     | Quick file open (fuzzy search) |
+| `⌘K`     | Inline edit at selection       |
+| `⌘B`     | Toggle file explorer           |
+| `⌘J`     | Toggle agent panel             |
+| `?`      | Keyboard shortcuts overlay     |
+| `Enter`  | Send message (in agent panel)  |
+| `Esc`    | Close overlays                 |
 
 ## Tech Stack
 

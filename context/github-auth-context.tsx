@@ -1,29 +1,48 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactNode,
+} from 'react'
 import { useGateway } from '@/context/gateway-context'
 import { setGithubToken, requestDeviceCode, pollDeviceToken } from '@/lib/github-api'
+import { isTauri, tauriInvoke } from '@/lib/tauri'
 
-const STORAGE_KEY = 'code-editor:github-token'
+const LEGACY_STORAGE_KEY = 'code-editor:github-token'
 const STORAGE_SOURCE_KEY = 'code-editor:github-token-source'
+const KEYCHAIN_SERVICE = 'OpenKnots.KnotCode'
+const KEYCHAIN_ACCOUNT = 'github-token'
 const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ?? ''
 
-/** Simple obfuscation — not true encryption, but prevents plaintext in localStorage.
- *  On Tauri desktop, use the OS keychain instead (future enhancement). */
-function obfuscate(text: string): string {
-  return btoa(text.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7)))).join(''))
-}
-
-function deobfuscate(encoded: string): string {
+/** Decodes the legacy localStorage token format to allow one-time migration. */
+function decodeLegacyToken(encoded: string): string {
   try {
     const decoded = atob(encoded)
-    return decoded.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7)))).join('')
-  } catch { return '' }
+    return decoded
+      .split('')
+      .map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7))))
+      .join('')
+  } catch {
+    return ''
+  }
 }
 
 export type OAuthStep =
   | { type: 'idle' }
-  | { type: 'device-pending'; userCode: string; verificationUri: string; verificationUriComplete: string; deviceCode: string; interval: number }
+  | {
+      type: 'device-pending'
+      userCode: string
+      verificationUri: string
+      verificationUriComplete: string
+      deviceCode: string
+      interval: number
+    }
   | { type: 'error'; message: string }
 
 type TokenSource = 'gateway' | 'manual' | 'oauth' | 'none'
@@ -35,7 +54,7 @@ interface GitHubAuthContextValue {
   source: TokenSource
   /** Whether we're still resolving the token */
   loading: boolean
-  /** Manually set a token (saved to local storage) */
+  /** Manually set a token (stored in keychain on desktop, memory on web) */
   setManualToken: (token: string) => void
   /** Clear the manual token */
   clearToken: () => void
@@ -61,16 +80,78 @@ export function GitHubAuthProvider({ children }: { children: ReactNode }) {
   const [oauthStep, setOAuthStep] = useState<OAuthStep>({ type: 'idle' })
   const oauthCancelled = useRef(false)
 
-  // Try to resolve token from gateway on connect
+  const persistToken = useCallback(async (t: string, src: TokenSource) => {
+    if (isTauri()) {
+      try {
+        await tauriInvoke('local_secret_set', {
+          service: KEYCHAIN_SERVICE,
+          account: KEYCHAIN_ACCOUNT,
+          secret: t,
+        })
+      } catch {
+        // Keep token in-memory even if keychain write fails.
+      }
+      localStorage.setItem(STORAGE_SOURCE_KEY, src)
+    }
+
+    setToken(t)
+    setSource(src)
+    setGithubToken(t)
+  }, [])
+
+  // Resolve token from secure storage (desktop) or one-time legacy migration.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (isTauri()) {
+        try {
+          const secureToken = await tauriInvoke<string | null>('local_secret_get', {
+            service: KEYCHAIN_SERVICE,
+            account: KEYCHAIN_ACCOUNT,
+          })
+          if (cancelled) return
+          if (secureToken) {
+            const savedSource =
+              (localStorage.getItem(STORAGE_SOURCE_KEY) as TokenSource) || 'manual'
+            setToken(secureToken)
+            setSource(savedSource === 'oauth' ? 'oauth' : 'manual')
+            setGithubToken(secureToken)
+            setLoading(false)
+            return
+          }
+        } catch {
+          // Continue to migration fallback.
+        }
+      }
+
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+      if (legacy) {
+        const migrated = decodeLegacyToken(legacy)
+        if (migrated) {
+          const savedSource = (localStorage.getItem(STORAGE_SOURCE_KEY) as TokenSource) || 'manual'
+          await persistToken(migrated, savedSource === 'oauth' ? 'oauth' : 'manual')
+        }
+        localStorage.removeItem(LEGACY_STORAGE_KEY)
+      }
+
+      if (!cancelled) setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [persistToken])
+
+  // Try to resolve token from gateway on connect (highest priority source).
   useEffect(() => {
     if (gwStatus !== 'connected') return
 
     let cancelled = false
     ;(async () => {
       try {
-        const result = await sendRequest('env.get', { key: 'GITHUB_TOKEN' }) as { value?: string } | null
+        const result = (await sendRequest('env.get', { key: 'GITHUB_TOKEN' })) as {
+          value?: string
+        } | null
         if (cancelled) return
-
         if (result?.value) {
           setToken(result.value)
           setSource('gateway')
@@ -82,62 +163,41 @@ export function GitHubAuthProvider({ children }: { children: ReactNode }) {
         // Gateway doesn't support env.get — that's fine
       }
 
-      // Fallback: check localStorage for a saved token
-      if (!cancelled) {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) {
-          const t = deobfuscate(stored)
-          if (t) {
-            const savedSource = (localStorage.getItem(STORAGE_SOURCE_KEY) as TokenSource) || 'manual'
-            setToken(t)
-            setSource(savedSource === 'oauth' ? 'oauth' : 'manual')
-            setGithubToken(t)
-          }
-        }
-        setLoading(false)
-      }
+      if (!cancelled) setLoading(false)
     })()
 
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [gwStatus, sendRequest])
 
-  // Also check localStorage on mount (before gateway connects)
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const t = deobfuscate(stored)
-      if (t) {
-        const savedSource = (localStorage.getItem(STORAGE_SOURCE_KEY) as TokenSource) || 'manual'
-        setToken(t)
-        setSource(savedSource === 'oauth' ? 'oauth' : 'manual')
-        setGithubToken(t)
-      }
-    }
-    // Give gateway a chance to override, then stop loading
-    const timer = setTimeout(() => setLoading(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  const saveToken = useCallback((t: string, src: TokenSource) => {
-    localStorage.setItem(STORAGE_KEY, obfuscate(t))
-    localStorage.setItem(STORAGE_SOURCE_KEY, src)
-    setToken(t)
-    setSource(src)
-    setGithubToken(t)
-  }, [])
-
-  const setManualToken = useCallback((t: string) => {
-    const trimmed = t.trim()
-    if (!trimmed) return
-    saveToken(trimmed, 'manual')
-  }, [saveToken])
+  const setManualToken = useCallback(
+    (t: string) => {
+      const trimmed = t.trim()
+      if (!trimmed) return
+      void persistToken(trimmed, 'manual')
+    },
+    [persistToken],
+  )
 
   const clearToken = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
-    localStorage.removeItem(STORAGE_SOURCE_KEY)
-    setToken('')
-    setSource('none')
-    setGithubToken('')
+    void (async () => {
+      if (isTauri()) {
+        try {
+          await tauriInvoke('local_secret_delete', {
+            service: KEYCHAIN_SERVICE,
+            account: KEYCHAIN_ACCOUNT,
+          })
+        } catch {
+          // Clearing in-memory state still logs out the current session.
+        }
+      }
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
+      localStorage.removeItem(STORAGE_SOURCE_KEY)
+      setToken('')
+      setSource('none')
+      setGithubToken('')
+    })()
   }, [])
 
   // ── OAuth Device Flow ──────────────────────────────────────────
@@ -154,7 +214,8 @@ export function GitHubAuthProvider({ children }: { children: ReactNode }) {
       const data = await requestDeviceCode(GITHUB_CLIENT_ID)
 
       // Use the complete URI (pre-fills the code) for one-click experience
-      const directUrl = data.verification_uri_complete || `${data.verification_uri}?user_code=${data.user_code}`
+      const directUrl =
+        data.verification_uri_complete || `${data.verification_uri}?user_code=${data.user_code}`
 
       setOAuthStep({
         type: 'device-pending',
@@ -199,14 +260,14 @@ export function GitHubAuthProvider({ children }: { children: ReactNode }) {
 
     const poll = async () => {
       while (!oauthCancelled.current) {
-        await new Promise(r => setTimeout(r, pendingInterval * 1000))
+        await new Promise((r) => setTimeout(r, pendingInterval * 1000))
         if (oauthCancelled.current) break
 
         try {
           const data = await pollDeviceToken(GITHUB_CLIENT_ID, pendingDeviceCode)
 
           if (data.access_token) {
-            saveToken(data.access_token, 'oauth')
+            await persistToken(data.access_token, 'oauth')
             setOAuthStep({ type: 'idle' })
             break
           }
@@ -221,22 +282,42 @@ export function GitHubAuthProvider({ children }: { children: ReactNode }) {
     }
 
     poll()
-    return () => { oauthCancelled.current = true }
-  }, [pendingDeviceCode, pendingInterval, saveToken])
+    return () => {
+      oauthCancelled.current = true
+    }
+  }, [pendingDeviceCode, pendingInterval, persistToken])
 
   const authenticated = !!token
   const oauthAvailable = !!GITHUB_CLIENT_ID
 
-  const value = useMemo<GitHubAuthContextValue>(() => ({
-    token, source, loading, setManualToken, clearToken,
-    authenticated, oauthAvailable, oauthStep, startOAuth, cancelOAuth,
-  }), [token, source, loading, setManualToken, clearToken, authenticated, oauthAvailable, oauthStep, startOAuth, cancelOAuth])
-
-  return (
-    <GitHubAuthContext.Provider value={value}>
-      {children}
-    </GitHubAuthContext.Provider>
+  const value = useMemo<GitHubAuthContextValue>(
+    () => ({
+      token,
+      source,
+      loading,
+      setManualToken,
+      clearToken,
+      authenticated,
+      oauthAvailable,
+      oauthStep,
+      startOAuth,
+      cancelOAuth,
+    }),
+    [
+      token,
+      source,
+      loading,
+      setManualToken,
+      clearToken,
+      authenticated,
+      oauthAvailable,
+      oauthStep,
+      startOAuth,
+      cancelOAuth,
+    ],
   )
+
+  return <GitHubAuthContext.Provider value={value}>{children}</GitHubAuthContext.Provider>
 }
 
 export function useGitHubAuth() {

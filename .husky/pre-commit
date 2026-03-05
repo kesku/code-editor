@@ -1,1 +1,2 @@
-npx lint-staged
+pnpm secrets:scan:staged
+pnpm exec lint-staged

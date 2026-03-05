@@ -213,6 +213,9 @@ pub fn run() {
             local_fs::local_git_log,
             local_fs::local_git_has_upstream,
             local_fs::local_git_ahead_behind,
+            local_fs::local_secret_set,
+            local_fs::local_secret_get,
+            local_fs::local_secret_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
