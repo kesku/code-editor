@@ -47,16 +47,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build frontend
-        run: pnpm frontend:build
-        env:
-          CI: true
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
 
       - name: Build Tauri (Linux)
-        run: |
-          cd src-tauri
-          cargo build --release
-          cargo tauri build --bundles appimage,deb
+        run: cargo tauri build --bundles appimage,deb
         env:
           CI: true
 
@@ -76,42 +71,5 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/deb/*.deb
 
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Tauri (macOS)
-        run: pnpm desktop:build
-        env:
-          CI: true
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-builds
-          path: src-tauri/target/release/bundle/dmg/*.dmg
-
-      - name: Upload to release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: src-tauri/target/release/bundle/dmg/*.dmg
+  # macOS builds are signed + notarized locally (requires Developer ID certificate)
+  # See scripts/sign-and-deploy.sh for the local release workflow
