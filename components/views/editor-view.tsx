@@ -11,6 +11,7 @@ import { useView } from '@/context/view-context'
 import { useLayout, usePanelResize } from '@/context/layout-context'
 import { EditorTabs } from '@/components/editor-tabs'
 import { FloatingPanel } from '@/components/floating-panel'
+import { KnotLogo } from '@/components/knot-logo'
 import { isTauri } from '@/lib/tauri'
 import { emit } from '@/lib/events'
 
@@ -242,56 +243,120 @@ export function EditorView() {
 
             {hasFiles ? (
               <>
-                {/* Tabs */}
                 <EditorTabs />
-
-                {/* Editor */}
                 <div className="flex-1 min-h-0 flex flex-col">
                   <CodeEditor />
                 </div>
               </>
             ) : (
-              /* Smart empty state */
-              <div className="flex-1 flex flex-col items-center justify-center gap-7">
-                {/* Animated icon with subtle glow */}
-                <div className="relative flex items-center justify-center">
-                  <div className="absolute w-24 h-24 rounded-full bg-[var(--brand)] opacity-[0.06] blur-xl animate-breathe" />
-                  <Icon
-                    icon="lucide:code-2"
-                    width={48}
-                    height={48}
-                    className="text-[var(--text-disabled)] opacity-40 animate-breathe"
-                  />
+              <div className="welcome-screen flex-1 flex flex-col items-center justify-center relative overflow-hidden select-none">
+                {/* Ambient background effects */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="welcome-orb welcome-orb--primary" />
+                  <div className="welcome-orb welcome-orb--secondary" />
+                  <div className="welcome-grid" />
                 </div>
 
-                <p className="text-[15px] text-[var(--text-tertiary)] font-medium">
-                  Start building something
-                </p>
+                <div className="relative z-10 flex flex-col items-center gap-8 max-w-[480px] px-6">
+                  {/* Logo hero */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative flex items-center justify-center"
+                  >
+                    <div
+                      className="absolute w-64 h-64 rounded-full opacity-[0.12] animate-breathe"
+                      style={{
+                        background: 'radial-gradient(circle, var(--brand) 0%, transparent 70%)',
+                      }}
+                    />
+                    <div
+                      className="absolute w-40 h-40 rounded-full opacity-[0.18] animate-breathe"
+                      style={{
+                        background: 'radial-gradient(circle, var(--brand) 0%, transparent 70%)',
+                        animationDelay: '0.5s',
+                      }}
+                    />
+                    <KnotLogo size={72} className="text-[var(--brand)] welcome-logo-spin" />
+                  </motion.div>
 
-                {/* Quick action grid */}
-                <div className="grid grid-cols-2 gap-3 w-[380px]">
-                  {QUICK_ACTIONS.filter((a) => a.event !== 'toggle-terminal' || isDesktop).map(
-                    (item) => (
-                      <button
-                        key={item.label}
-                        onClick={() => handleQuickAction(item.event)}
-                        className="flex items-center gap-3.5 px-5 py-4 rounded-2xl border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_60%,transparent)] hover:bg-[var(--bg-subtle)] hover:border-[var(--text-disabled)] transition-all duration-200 cursor-pointer group"
-                      >
-                        <Icon
-                          icon={item.icon}
-                          width={20}
-                          height={20}
-                          className="text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] shrink-0"
-                        />
-                        <span className="flex-1 text-left text-[13px] text-[var(--text-secondary)] font-semibold">
-                          {item.label}
-                        </span>
-                        <kbd className="text-[10px] px-2 py-1 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border)] text-[var(--text-disabled)] shrink-0 font-mono">
-                          {item.shortcut}
-                        </kbd>
-                      </button>
-                    ),
-                  )}
+                  {/* Brand text */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex flex-col items-center gap-2"
+                  >
+                    <h1 className="text-[28px] font-bold tracking-[-0.03em] text-[var(--text-primary)]">
+                      Knot<span className="text-[var(--brand)]">Code</span>
+                    </h1>
+                    <p className="text-[14px] text-[var(--text-tertiary)] font-medium tracking-[-0.01em]">
+                      Open a file or start a conversation to begin
+                    </p>
+                  </motion.div>
+
+                  {/* Action cards */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    className="grid grid-cols-2 gap-3 w-full"
+                  >
+                    {QUICK_ACTIONS.filter((a) => a.event !== 'toggle-terminal' || isDesktop).map(
+                      (item, i) => (
+                        <motion.button
+                          key={item.label}
+                          onClick={() => handleQuickAction(item.event)}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{
+                            duration: 0.4,
+                            delay: 0.35 + i * 0.07,
+                            ease: [0.16, 1, 0.3, 1],
+                          }}
+                          whileHover={{ y: -2, scale: 1.02 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="welcome-action-card group relative flex items-center gap-4 px-5 py-4 rounded-2xl cursor-pointer text-left"
+                        >
+                          <div className="welcome-action-icon-wrap shrink-0">
+                            <Icon
+                              icon={item.icon}
+                              width={20}
+                              height={20}
+                              className="text-[var(--text-tertiary)] group-hover:text-[var(--brand)] transition-colors duration-200"
+                            />
+                          </div>
+                          <span className="flex-1 text-[13px] text-[var(--text-secondary)] font-semibold group-hover:text-[var(--text-primary)] transition-colors duration-200">
+                            {item.label}
+                          </span>
+                          <kbd className="text-[10px] px-2 py-1 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-disabled)] shrink-0 font-mono group-hover:border-[var(--text-disabled)] transition-colors duration-200">
+                            {item.shortcut}
+                          </kbd>
+                        </motion.button>
+                      ),
+                    )}
+                  </motion.div>
+
+                  {/* Tip line */}
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.7 }}
+                    className="text-[12px] text-[var(--text-disabled)] font-medium flex items-center gap-2"
+                  >
+                    <Icon
+                      icon="lucide:lightbulb"
+                      width={13}
+                      height={13}
+                      className="text-[var(--brand)] opacity-60"
+                    />
+                    Press{' '}
+                    <kbd className="mx-0.5 px-1.5 py-0.5 rounded-md bg-[var(--bg-subtle)] border border-[var(--border)] text-[10px] font-mono">
+                      ⌘P
+                    </kbd>{' '}
+                    to quickly find any file
+                  </motion.p>
                 </div>
               </div>
             )}

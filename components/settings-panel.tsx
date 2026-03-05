@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Icon } from '@iconify/react'
 import { emit } from '@/lib/events'
-import { useTheme, THEME_PRESETS, RADIUS_PRESETS } from '@/context/theme-context'
+import { useTheme, THEME_PRESETS } from '@/context/theme-context'
 import { usePlugins } from '@/context/plugin-context'
 import { useGitHubAuth } from '@/context/github-auth-context'
 import { AgentBuilder, AgentSummary } from '@/components/agent-builder'
@@ -19,8 +19,18 @@ type SettingsTab = 'general' | 'editor' | 'agent' | 'keybindings' | 'plugins'
 const TOKEN_REVEAL_TIMEOUT_MS = 15000
 
 export function SettingsPanel({ open, onClose, initialTab }: Props) {
-  const { themeId, setThemeId, mode, setMode, borderRadius, setBorderRadius, bgTint, setBgTint } =
-    useTheme()
+  const {
+    themeId,
+    setThemeId,
+    mode,
+    setMode,
+    bgTint,
+    setBgTint,
+    terminalBg,
+    terminalBgOpacity,
+    setTerminalBg,
+    setTerminalBgOpacity,
+  } = useTheme()
   const { slots } = usePlugins()
   const {
     token: ghToken,
@@ -227,45 +237,6 @@ export function SettingsPanel({ open, onClose, initialTab }: Props) {
                       {m === 'dark' ? 'Dark' : 'Light'}
                     </button>
                   ))}
-                </div>
-              </Section>
-
-              {/* Border Radius */}
-              <Section title="Border Radius">
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="range"
-                      min={0}
-                      max={24}
-                      step={1}
-                      value={borderRadius}
-                      onChange={(e) => setBorderRadius(Number(e.target.value))}
-                      className="flex-1 h-1 appearance-none rounded-full bg-[var(--bg-tertiary)] accent-[var(--brand)] cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--brand)] [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:cursor-pointer"
-                    />
-                    <span className="text-[10px] font-mono text-[var(--text-tertiary)] w-8 text-right tabular-nums">
-                      {borderRadius}px
-                    </span>
-                  </div>
-                  <div className="flex gap-1">
-                    {RADIUS_PRESETS.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setBorderRadius(p.value)}
-                        className={`flex-1 flex flex-col items-center gap-1 py-1.5 rounded-lg text-[9px] font-medium transition-all cursor-pointer border ${
-                          borderRadius === p.value
-                            ? 'border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_12%,transparent)] text-[var(--brand)]'
-                            : 'border-[var(--border)] text-[var(--text-tertiary)] hover:border-[var(--text-disabled)] hover:text-[var(--text-secondary)]'
-                        }`}
-                      >
-                        <div
-                          className="w-5 h-5 border-2 border-current"
-                          style={{ borderRadius: `${Math.min(p.value, 10)}px` }}
-                        />
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </Section>
 
@@ -581,6 +552,84 @@ export function SettingsPanel({ open, onClose, initialTab }: Props) {
               </Section>
               <Section title="Minimap">
                 <Toggle checked={minimap} onChange={setMinimap} label="Show code minimap" />
+              </Section>
+
+              <Section title="Terminal Background">
+                <div className="space-y-3">
+                  {terminalBg ? (
+                    <div className="relative rounded-lg overflow-hidden border border-[var(--border)] group">
+                      <div
+                        className="w-full h-20 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${terminalBg})` }}
+                      />
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          backgroundColor: `color-mix(in srgb, var(--bg) ${terminalBgOpacity}%, transparent)`,
+                        }}
+                      />
+                      <button
+                        onClick={() => setTerminalBg(null)}
+                        className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/60 text-white/80 hover:text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        title="Remove background"
+                      >
+                        <Icon icon="lucide:x" width={10} height={10} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        const input = document.createElement('input')
+                        input.type = 'file'
+                        input.accept = 'image/*'
+                        input.onchange = () => {
+                          const file = input.files?.[0]
+                          if (!file) return
+                          const reader = new FileReader()
+                          reader.onload = () => {
+                            const dataUrl = reader.result as string
+                            setTerminalBg(dataUrl)
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                        input.click()
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-dashed border-[var(--border)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:border-[var(--text-disabled)] transition-all cursor-pointer"
+                    >
+                      <Icon icon="lucide:image-plus" width={14} height={14} />
+                      <span className="text-[10px] font-medium">Choose image</span>
+                    </button>
+                  )}
+                  {terminalBg && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-[var(--text-tertiary)]">
+                          Theme overlay
+                        </span>
+                        <span className="text-[10px] font-mono text-[var(--text-tertiary)] w-8 text-right tabular-nums">
+                          {terminalBgOpacity}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={95}
+                        step={5}
+                        value={terminalBgOpacity}
+                        onChange={(e) => setTerminalBgOpacity(Number(e.target.value))}
+                        className="w-full h-1 appearance-none rounded-full bg-[var(--bg-tertiary)] accent-[var(--brand)] cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--brand)] [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:cursor-pointer"
+                      />
+                      <div className="flex items-center justify-between text-[8px] text-[var(--text-disabled)]">
+                        <span>Image only</span>
+                        <span>Mostly theme</span>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-[9px] text-[var(--text-disabled)]">
+                    Set a wallpaper behind your terminal. The theme overlay blends your current
+                    theme on top.
+                  </p>
+                </div>
               </Section>
             </>
           )}

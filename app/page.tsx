@@ -508,7 +508,7 @@ export default function EditorLayout() {
           <div className="flex-1 tauri-drag-region" data-tauri-drag-region />
 
           {/* Mode switcher — 3D pill group */}
-          <div className="tauri-no-drag flex items-center rounded-full bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] p-[3px] gap-[2px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]">
+          <div className="tauri-no-drag flex items-center rounded-full bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] p-[4px] gap-[3px] shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]">
             {[
               { id: 'classic' as AppMode, icon: 'lucide:code-2', label: 'Classic' },
               { id: 'chat' as AppMode, icon: 'lucide:message-square', label: 'Chat' },
@@ -517,14 +517,14 @@ export default function EditorLayout() {
               <button
                 key={m.id}
                 onClick={() => setMode(m.id)}
-                className={`relative h-7 w-7 flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer ${
+                className={`relative h-8 w-8 flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer ${
                   mode === m.id
-                    ? 'bg-[var(--bg)] text-[var(--text-primary)] shadow-[0_1px_3px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.06)_inset]'
-                    : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[color-mix(in_srgb,var(--text-primary)_4%,transparent)] active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]'
+                    ? 'bg-[var(--bg)] text-[var(--text-primary)] shadow-[0_2px_6px_rgba(0,0,0,0.3),0_1px_0_rgba(255,255,255,0.08)_inset]'
+                    : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[color-mix(in_srgb,var(--text-primary)_6%,transparent)] active:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] hover:scale-105'
                 }`}
                 title={`${m.label} mode (⌘⇧${['classic', 'chat', 'tui'].indexOf(m.id) + 1})`}
               >
-                <Icon icon={m.icon} width={15} height={15} />
+                <Icon icon={m.icon} width={17} height={17} />
               </button>
             ))}
           </div>
@@ -532,10 +532,10 @@ export default function EditorLayout() {
           {/* Settings */}
           <button
             onClick={() => setSettingsVisible(true)}
-            className="tauri-no-drag p-2 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors"
+            className="tauri-no-drag p-2.5 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-all hover:scale-110"
             title="Settings"
           >
-            <Icon icon="lucide:settings" width={19} height={19} className="animate-gear-sway" />
+            <Icon icon="lucide:settings" width={21} height={21} className="animate-gear-sway" />
           </button>
         </div>
 
@@ -551,7 +551,7 @@ export default function EditorLayout() {
           >
             {/* TUI mode: gateway terminal fills center */}
             {modeSpec.terminalCenter ? (
-              <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden rounded-xl border border-[var(--border)]">
+              <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden rounded-2xl border-[1.5px] border-[var(--border)]">
                 <GatewayTerminalLazy />
               </div>
             ) : (
@@ -622,7 +622,7 @@ export default function EditorLayout() {
                   animate={{ y: 0 }}
                   exit={{ y: 520 }}
                   transition={TERMINAL_SPRING}
-                  className="fixed left-2 right-2 bottom-2 z-[80] rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl overflow-hidden"
+                  className="fixed left-2 right-2 bottom-2 z-[80] rounded-3xl border-[1.5px] border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl overflow-hidden"
                   style={
                     {
                       '--height': Math.min(
@@ -632,25 +632,25 @@ export default function EditorLayout() {
                     } as React.CSSProperties
                   }
                 >
-                  <div className="h-10 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-                    <span className="text-[11px] font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <div className="h-12 flex items-center justify-between px-4 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+                    <span className="text-[13px] font-semibold text-[var(--text-primary)] flex items-center gap-2.5">
                       <Icon
                         icon="lucide:terminal"
-                        width={14}
-                        height={14}
+                        width={16}
+                        height={16}
                         className="text-[var(--brand)]"
                       />
                       Terminal
                     </span>
                     <button
                       onClick={() => layout.hide('terminal')}
-                      className="p-2 rounded-lg hover:bg-[var(--bg-subtle)] text-[var(--text-tertiary)] cursor-pointer tauri-no-drag"
+                      className="p-2.5 rounded-xl hover:bg-[var(--bg-subtle)] text-[var(--text-tertiary)] cursor-pointer tauri-no-drag hover:scale-110 transition-all"
                       title="Close"
                     >
-                      <Icon icon="lucide:x" width={14} height={14} />
+                      <Icon icon="lucide:x" width={16} height={16} />
                     </button>
                   </div>
-                  <div className="h-[calc(100%-40px)]">
+                  <div className="h-[calc(100%-48px)]">
                     <TerminalPanel
                       visible={terminalVisible && !terminalFloating}
                       height={terminalHeight}

@@ -364,9 +364,9 @@
   --shimmer-from: #15191d;
   --shimmer-via: #1d2228;
 
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
 /* ── Bone Light (ink on paper) ────────────────────────────────── */
@@ -453,9 +453,9 @@
   --shimmer-from: #f0f0f0;
   --shimmer-via: #fafafa;
 
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1821,8 +1821,8 @@ p {
    Scrollbar
    ────────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
@@ -2096,6 +2096,123 @@ p {
 
 .animate-breathe {
   animation: breathe 3s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Welcome Screen — World-class empty state
+   ══════════════════════════════════════════════════════════════════ */
+
+.welcome-screen {
+  background:
+    radial-gradient(
+      ellipse 80% 60% at 50% 40%,
+      color-mix(in srgb, var(--brand) 4%, transparent),
+      transparent
+    ),
+    var(--bg);
+}
+
+.welcome-orb {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation: welcome-float 8s ease-in-out infinite;
+}
+
+.welcome-orb--primary {
+  width: 60vw;
+  height: 60vw;
+  max-width: 900px;
+  max-height: 900px;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, var(--brand) 0%, transparent 70%);
+  opacity: 0.06;
+}
+
+.welcome-orb--secondary {
+  width: 45vw;
+  height: 45vw;
+  max-width: 700px;
+  max-height: 700px;
+  bottom: 10%;
+  right: 15%;
+  background: radial-gradient(circle, var(--brand) 0%, transparent 70%);
+  opacity: 0.035;
+  animation-delay: -4s;
+  animation-duration: 10s;
+}
+
+.welcome-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--text-primary) 3%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--text-primary) 3%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 45%, rgba(0, 0, 0, 0.5), transparent);
+}
+
+@keyframes welcome-float {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  33% {
+    transform: translateX(-50%) translateY(-15px) scale(1.05);
+  }
+  66% {
+    transform: translateX(-50%) translateY(10px) scale(0.97);
+  }
+}
+
+.welcome-logo-spin {
+  animation: welcome-logo-idle 20s linear infinite;
+  filter: drop-shadow(0 0 30px color-mix(in srgb, var(--brand) 40%, transparent));
+}
+
+@keyframes welcome-logo-idle {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.welcome-action-card {
+  background: color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-action-card:hover {
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--brand) 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--brand) 6%, transparent);
+}
+
+.welcome-action-icon-wrap {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-action-card:hover .welcome-action-icon-wrap {
+  background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 
 .animate-glow-pulse {
@@ -3898,9 +4015,9 @@ p {
   --shimmer-from: #080e1e;
   --shimmer-via: #111830;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
 /* ── CyberNord Light — terminal daylight mode ─────────────────── */
@@ -3972,9 +4089,9 @@ p {
   --shimmer-from: var(--bg-elevated);
   --shimmer-via: var(--bg-subtle);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
 /* ── CyberNord semantic tokens ────────────────────────────────── */

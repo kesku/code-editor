@@ -75,15 +75,15 @@ function findFileLinksInLine(
   return results
 }
 
-function buildXtermTheme() {
+function buildXtermTheme(hasBgImage?: boolean) {
   const s = getComputedStyle(document.documentElement)
   const v = (name: string) => s.getPropertyValue(name).trim()
   const dark = document.documentElement.classList.contains('dark')
   return {
-    background: v('--bg') || (dark ? '#0a0a0a' : '#fafafa'),
+    background: hasBgImage ? 'transparent' : v('--bg') || (dark ? '#0a0a0a' : '#fafafa'),
     foreground: v('--text-primary') || (dark ? '#e5e5e5' : '#171717'),
     cursor: v('--brand') || '#a855f7',
-    cursorAccent: v('--bg') || (dark ? '#0a0a0a' : '#fafafa'),
+    cursorAccent: hasBgImage ? 'transparent' : v('--bg') || (dark ? '#0a0a0a' : '#fafafa'),
     selectionBackground: (v('--brand') || '#a855f7') + '40',
     black: dark ? '#1e1e1e' : '#d4d4d4',
     red: dark ? '#f87171' : '#dc2626',
@@ -236,6 +236,8 @@ interface TerminalPaneProps {
   refreshOnOpenOrMode?: boolean
   refreshToken?: string
   startupCommand?: string
+  terminalBg?: string | null
+  terminalBgOpacity?: number
 }
 
 function TerminalPane({
@@ -251,7 +253,10 @@ function TerminalPane({
   refreshOnOpenOrMode,
   refreshToken,
   startupCommand,
+  terminalBg,
+  terminalBgOpacity = 15,
 }: TerminalPaneProps) {
+  const hasBgImage = !!terminalBg
   const [activeId, setActiveId] = useState<number | null>(session.terminalId)
   const [terminalError, setTerminalError] = useState<string | null>(null)
   const termRef = useRef<HTMLDivElement>(null)
@@ -371,7 +376,8 @@ function TerminalPane({
         lineHeight: 1.4,
         scrollback: 10000,
         allowProposedApi: true,
-        theme: buildXtermTheme(),
+        allowTransparency: hasBgImage,
+        theme: buildXtermTheme(hasBgImage),
       })
       term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
         const meta = e.metaKey || e.ctrlKey
@@ -490,15 +496,16 @@ function TerminalPane({
     return () => window.removeEventListener('run-script-in-terminal', handler)
   }, [isDesktop, createTerminal])
 
-  // Reapply xterm theme when mode/theme changes
+  // Reapply xterm theme when mode/theme/background changes
   useEffect(() => {
     const term = session.xterm
     if (!term) return
     const id = requestAnimationFrame(() => {
-      term.options.theme = buildXtermTheme()
+      term.options.allowTransparency = hasBgImage
+      term.options.theme = buildXtermTheme(hasBgImage)
     })
     return () => cancelAnimationFrame(id)
-  }, [themeVersion])
+  }, [themeVersion, hasBgImage])
 
   // Fit terminal on size or active tab change
   useEffect(() => {
@@ -561,7 +568,21 @@ function TerminalPane({
       )}
 
       {/* Terminal viewport */}
-      <div className="flex-1 overflow-hidden bg-[var(--bg)]">
+      <div className={`flex-1 overflow-hidden relative ${hasBgImage ? '' : 'bg-[var(--bg)]'}`}>
+        {hasBgImage && (
+          <>
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${terminalBg})` }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: `color-mix(in srgb, var(--bg) ${terminalBgOpacity}%, transparent)`,
+              }}
+            />
+          </>
+        )}
         {isDesktop ? (
           <div className="w-full h-full p-2 relative">
             <div ref={termRef} className="w-full h-full" />
@@ -603,7 +624,7 @@ export function TerminalPanel({
   refreshToken,
   startupCommand,
 }: TerminalPanelProps) {
-  const { version: themeVersion } = useTheme()
+  const { version: themeVersion, terminalBg, terminalBgOpacity } = useTheme()
   const local = useLocal()
   const [isDesktop, setIsDesktop] = useState(false)
   const resizing = useRef(false)
@@ -680,6 +701,8 @@ export function TerminalPanel({
           refreshOnOpenOrMode={refreshOnOpenOrMode}
           refreshToken={refreshToken}
           startupCommand={startupCommand}
+          terminalBg={terminalBg}
+          terminalBgOpacity={terminalBgOpacity}
         />
       </div>
     </div>

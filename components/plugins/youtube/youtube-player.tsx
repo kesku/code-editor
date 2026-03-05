@@ -122,15 +122,6 @@ export function YouTubePlayer() {
       return false
     }
   })
-  const [ratio, setRatio] = useState<'16 / 9' | '4 / 3' | '1 / 1'>(() => {
-    try {
-      return (
-        (localStorage.getItem('knot:youtube-ratio') as '16 / 9' | '4 / 3' | '1 / 1') || '16 / 9'
-      )
-    } catch {
-      return '16 / 9'
-    }
-  })
   const inputRef = useRef<HTMLInputElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -147,12 +138,6 @@ export function YouTubePlayer() {
       emit('youtube-state-changed', { playing: false, type: '', id: '' })
     }
   }, [current])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('knot:youtube-ratio', ratio)
-    } catch {}
-  }, [ratio])
 
   useEffect(() => {
     try {
@@ -286,22 +271,6 @@ export function YouTubePlayer() {
         <div className="flex-1" />
         {current && (
           <>
-            <div className="flex items-center rounded-full bg-[color-mix(in_srgb,var(--text-primary)_8%,transparent)] p-[2px] gap-[1px] shadow-[inset_0_0.5px_1px_rgba(0,0,0,0.2)] mr-1">
-              {(['16 / 9', '4 / 3', '1 / 1'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRatio(r)}
-                  className={`h-4 px-1.5 rounded-full text-[7px] font-medium transition-all duration-150 cursor-pointer ${
-                    ratio === r
-                      ? 'bg-[var(--bg)] text-[var(--text-primary)] shadow-[0_0.5px_2px_rgba(0,0,0,0.25),0_0.5px_0_rgba(255,255,255,0.06)_inset]'
-                      : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'
-                  }`}
-                  title={r.replace(' / ', ':')}
-                >
-                  {r.replace(' / ', ':')}
-                </button>
-              ))}
-            </div>
             <button
               onClick={popoutPiP}
               className="p-0.5 rounded cursor-pointer text-[var(--text-disabled)] hover:text-[var(--text-secondary)]"
@@ -446,10 +415,7 @@ export function YouTubePlayer() {
       <div className="flex-1 flex flex-col min-h-0">
         {current ? (
           <div className="flex-1 min-h-0 p-2">
-            <div
-              className="w-full h-full rounded-xl overflow-hidden bg-black/80"
-              style={{ aspectRatio: ratio }}
-            >
+            <div className="w-full h-full rounded-xl overflow-hidden bg-black/80">
               <iframe
                 ref={iframeRef}
                 src={buildEmbedUrl(current)}

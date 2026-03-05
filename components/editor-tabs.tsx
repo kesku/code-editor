@@ -81,7 +81,7 @@ export function EditorTabs() {
   if (files.length === 0) return null
 
   return (
-    <div className="relative flex items-center border-b border-[var(--border)] bg-[var(--bg)] overflow-x-auto no-scrollbar shrink-0 h-[38px]">
+    <div className="relative flex items-center border-b border-[var(--border)] bg-[var(--bg)] overflow-x-auto no-scrollbar shrink-0 h-[42px]">
       {files.map((file, index) => {
         const name = file.path.split('/').pop() ?? file.path
         const isActive = file.path === activeFile
@@ -92,15 +92,16 @@ export function EditorTabs() {
           <div
             key={file.path}
             draggable
-            onDragStart={e => handleDragStart(e, index)}
+            onDragStart={(e) => handleDragStart(e, index)}
             onDragEnd={handleDragEnd}
-            onDragOver={e => handleDragOver(e, index)}
+            onDragOver={(e) => handleDragOver(e, index)}
             onDragLeave={() => setDropTarget(null)}
             className={`
-              group relative flex items-center gap-2 px-4 h-full cursor-pointer transition-all duration-150 select-none min-w-0 shrink-0
-              ${isActive
-                ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+              group relative flex items-center gap-2.5 px-5 h-full cursor-pointer transition-all duration-150 select-none min-w-0 shrink-0
+              ${
+                isActive
+                  ? 'bg-[var(--bg-elevated)] text-[var(--text-primary)]'
+                  : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
               }
               ${isDragTarget ? 'border-l-2 border-l-[var(--brand)]' : 'border-l-0'}
             `}
@@ -108,7 +109,7 @@ export function EditorTabs() {
           >
             {/* Active indicator — bottom bar with gradient edges */}
             {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px]">
+              <div className="absolute bottom-0 left-0 right-0 h-[3px]">
                 <div className="h-full bg-[var(--brand)] rounded-t-full" />
               </div>
             )}
@@ -119,10 +120,16 @@ export function EditorTabs() {
             )}
 
             {/* File icon */}
-            <Icon icon={icon} width={16} height={16} style={{ color: isActive ? color : undefined }} className={`transition-all duration-150 ${isActive ? 'scale-105' : 'text-[var(--text-tertiary)] group-hover:scale-105'}`} />
+            <Icon
+              icon={icon}
+              width={17}
+              height={17}
+              style={{ color: isActive ? color : undefined }}
+              className={`transition-all duration-150 ${isActive ? 'scale-110' : 'text-[var(--text-tertiary)] group-hover:scale-110'}`}
+            />
 
             {/* File name */}
-            <span className="text-[12px] font-medium truncate max-w-[130px]" title={file.path}>
+            <span className="text-[13px] font-medium truncate max-w-[140px]" title={file.path}>
               {name}
             </span>
 
@@ -130,17 +137,23 @@ export function EditorTabs() {
             {file.dirty && (
               <span className="relative w-1.5 h-1.5 shrink-0" title="Unsaved changes">
                 <span className="absolute inset-0 rounded-full bg-[var(--brand)]" />
-                <span className="absolute inset-0 rounded-full bg-[var(--brand)] animate-ping opacity-40" style={{ animationDuration: '2s' }} />
+                <span
+                  className="absolute inset-0 rounded-full bg-[var(--brand)] animate-ping opacity-40"
+                  style={{ animationDuration: '2s' }}
+                />
               </span>
             )}
 
             {/* Close button — show dot when dirty and not hovered */}
             <button
-              onClick={e => { e.stopPropagation(); closeFile(file.path) }}
-              className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-primary)_10%,transparent)] transition-all cursor-pointer ml-1"
+              onClick={(e) => {
+                e.stopPropagation()
+                closeFile(file.path)
+              }}
+              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[color-mix(in_srgb,var(--text-primary)_10%,transparent)] transition-all cursor-pointer ml-1 hover:scale-110"
               title="Close (⌘W)"
             >
-              <Icon icon="lucide:x" width={13} height={13} />
+              <Icon icon="lucide:x" width={14} height={14} />
             </button>
 
             {/* Separator */}
@@ -154,7 +167,7 @@ export function EditorTabs() {
       {/* Tab count indicator when many tabs are open */}
       {files.length > 6 && (
         <div className="sticky right-0 flex items-center px-2 h-full bg-gradient-to-l from-[var(--bg)] via-[var(--bg)] to-transparent shrink-0">
-          <span className="text-[10px] font-mono font-bold text-[var(--text-tertiary)] bg-[var(--bg-subtle)] px-2 py-0.5 rounded-full border border-[var(--border)]">
+          <span className="text-[11px] font-mono font-bold text-[var(--text-tertiary)] bg-[var(--bg-subtle)] px-2.5 py-1 rounded-full border-[1.5px] border-[var(--border)]">
             {files.length}
           </span>
         </div>

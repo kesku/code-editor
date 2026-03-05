@@ -1,6 +1,14 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from 'react'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 export type ResolvedMode = 'light' | 'dark'
@@ -27,24 +35,18 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: 'prettypink', label: 'PrettyPink', color: '#F5A9B8', group: 'core' },
 ]
 
-export const RADIUS_PRESETS = [
-  { id: 'sharp', label: 'Sharp', value: 0 },
-  { id: 'subtle', label: 'Subtle', value: 4 },
-  { id: 'default', label: 'Default', value: 8 },
-  { id: 'round', label: 'Round', value: 14 },
-  { id: 'pill', label: 'Pill', value: 20 },
-] as const
-
 interface ThemeContextValue {
   themeId: ThemeId
   mode: ThemeMode
   resolvedMode: ResolvedMode
   setThemeId: (id: ThemeId) => void
   setMode: (mode: ThemeMode) => void
-  borderRadius: number
-  setBorderRadius: (r: number) => void
   bgTint: number
   setBgTint: (t: number) => void
+  terminalBg: string | null
+  terminalBgOpacity: number
+  setTerminalBg: (url: string | null) => void
+  setTerminalBgOpacity: (v: number) => void
   version: number
   bumpVersion: () => void
 }
@@ -53,8 +55,9 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 const STORAGE_THEME = 'code-editor:theme'
 const STORAGE_MODE = 'code-editor:mode'
-const STORAGE_RADIUS = 'code-editor:border-radius'
 const STORAGE_BG_TINT = 'code-editor:bg-tint'
+const STORAGE_TERMINAL_BG = 'code-editor:terminal-bg'
+const STORAGE_TERMINAL_BG_OPACITY = 'code-editor:terminal-bg-opacity'
 
 function getSystemPreference(): ResolvedMode {
   if (typeof window === 'undefined') return 'dark'
@@ -85,42 +88,36 @@ function applyToDOM(themeId: string, resolved: ResolvedMode) {
   ensureExtraThemes(themeId)
 }
 
-function applyRadiusToDOM(base: number) {
-  const el = document.documentElement
-  el.style.setProperty('--radius-sm', `${Math.max(0, base - 2)}px`)
-  el.style.setProperty('--radius-md', `${base}px`)
-  el.style.setProperty('--radius-lg', `${Math.round(base * 1.5)}px`)
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeId, setThemeIdState] = useState<ThemeId>('obsidian')
   const [mode, setModeState] = useState<ThemeMode>('dark')
   const [resolvedMode, setResolvedMode] = useState<ResolvedMode>('dark')
-  const [borderRadius, setBorderRadiusState] = useState(8)
   const [bgTint, setBgTintState] = useState(6)
+  const [terminalBg, setTerminalBgState] = useState<string | null>(null)
+  const [terminalBgOpacity, setTerminalBgOpacityState] = useState(15)
   const [version, setVersion] = useState(0)
 
-  const bumpVersion = useCallback(() => setVersion(v => v + 1), [])
+  const bumpVersion = useCallback(() => setVersion((v) => v + 1), [])
 
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem(STORAGE_THEME)
       const savedMode = localStorage.getItem(STORAGE_MODE) as ThemeMode | null
-      const savedRadius = localStorage.getItem(STORAGE_RADIUS)
       const tid = savedTheme || 'obsidian'
       const md = savedMode || 'dark'
       const rm = resolveMode(md)
-      const rad = savedRadius !== null ? Number(savedRadius) : 8
       const savedTint = localStorage.getItem(STORAGE_BG_TINT)
       const tint = savedTint !== null ? Number(savedTint) : 6
+      const savedTermBg = localStorage.getItem(STORAGE_TERMINAL_BG)
+      const savedTermBgOpacity = localStorage.getItem(STORAGE_TERMINAL_BG_OPACITY)
       setThemeIdState(tid)
       setModeState(md)
       setResolvedMode(rm)
       setBgTintState(tint)
+      if (savedTermBg) setTerminalBgState(savedTermBg)
+      if (savedTermBgOpacity !== null) setTerminalBgOpacityState(Number(savedTermBgOpacity))
       document.documentElement.style.setProperty('--theme-bg-intensity', `${tint}%`)
-      setBorderRadiusState(rad)
       applyToDOM(tid, rm)
-      applyRadiusToDOM(rad)
     } catch {}
   }, [])
 
@@ -131,51 +128,97 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       const rm = getSystemPreference()
       setResolvedMode(rm)
       applyToDOM(themeId, rm)
-      setVersion(v => v + 1)
+      setVersion((v) => v + 1)
     }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
   }, [mode, themeId])
 
-  const setThemeId = useCallback((id: ThemeId) => {
-    setThemeIdState(id)
-    try { localStorage.setItem(STORAGE_THEME, id) } catch {}
-    applyToDOM(id, resolvedMode)
-    setVersion(v => v + 1)
-  }, [resolvedMode])
+  const setThemeId = useCallback(
+    (id: ThemeId) => {
+      setThemeIdState(id)
+      try {
+        localStorage.setItem(STORAGE_THEME, id)
+      } catch {}
+      applyToDOM(id, resolvedMode)
+      setVersion((v) => v + 1)
+    },
+    [resolvedMode],
+  )
 
-  const setMode = useCallback((m: ThemeMode) => {
-    setModeState(m)
-    const rm = resolveMode(m)
-    setResolvedMode(rm)
-    try { localStorage.setItem(STORAGE_MODE, m) } catch {}
-    applyToDOM(themeId, rm)
-    setVersion(v => v + 1)
-  }, [themeId])
-
-  const setBorderRadius = useCallback((r: number) => {
-    setBorderRadiusState(r)
-    try { localStorage.setItem(STORAGE_RADIUS, String(r)) } catch {}
-    applyRadiusToDOM(r)
-    setVersion(v => v + 1)
-  }, [])
+  const setMode = useCallback(
+    (m: ThemeMode) => {
+      setModeState(m)
+      const rm = resolveMode(m)
+      setResolvedMode(rm)
+      try {
+        localStorage.setItem(STORAGE_MODE, m)
+      } catch {}
+      applyToDOM(themeId, rm)
+      setVersion((v) => v + 1)
+    },
+    [themeId],
+  )
 
   const setBgTint = useCallback((t: number) => {
     const clamped = Math.min(Math.max(t, 0), 20)
     setBgTintState(clamped)
-    try { localStorage.setItem(STORAGE_BG_TINT, String(clamped)) } catch {}
+    try {
+      localStorage.setItem(STORAGE_BG_TINT, String(clamped))
+    } catch {}
     document.documentElement.style.setProperty('--theme-bg-intensity', `${clamped}%`)
   }, [])
 
-  const value = useMemo<ThemeContextValue>(() => ({
-    themeId, mode, resolvedMode, setThemeId, setMode, borderRadius, setBorderRadius, bgTint, setBgTint, version, bumpVersion,
-  }), [themeId, mode, resolvedMode, setThemeId, setMode, borderRadius, setBorderRadius, bgTint, setBgTint, version, bumpVersion])
+  const setTerminalBg = useCallback((url: string | null) => {
+    setTerminalBgState(url)
+    try {
+      if (url) localStorage.setItem(STORAGE_TERMINAL_BG, url)
+      else localStorage.removeItem(STORAGE_TERMINAL_BG)
+    } catch {}
+  }, [])
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
+  const setTerminalBgOpacity = useCallback((v: number) => {
+    const clamped = Math.min(Math.max(v, 0), 100)
+    setTerminalBgOpacityState(clamped)
+    try {
+      localStorage.setItem(STORAGE_TERMINAL_BG_OPACITY, String(clamped))
+    } catch {}
+  }, [])
+
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      themeId,
+      mode,
+      resolvedMode,
+      setThemeId,
+      setMode,
+      bgTint,
+      setBgTint,
+      terminalBg,
+      terminalBgOpacity,
+      setTerminalBg,
+      setTerminalBgOpacity,
+      version,
+      bumpVersion,
+    }),
+    [
+      themeId,
+      mode,
+      resolvedMode,
+      setThemeId,
+      setMode,
+      bgTint,
+      setBgTint,
+      terminalBg,
+      terminalBgOpacity,
+      setTerminalBg,
+      setTerminalBgOpacity,
+      version,
+      bumpVersion,
+    ],
   )
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {

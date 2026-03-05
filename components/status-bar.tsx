@@ -34,9 +34,9 @@ function ActivityPulseRing({ status, agentActive }: { status: string; agentActiv
       : 'Disconnected'
 
   return (
-    <span className="relative w-4 h-4 flex items-center justify-center" title={statusTitle}>
+    <span className="relative w-5 h-5 flex items-center justify-center" title={statusTitle}>
       <motion.svg
-        className="absolute inset-0 w-4 h-4"
+        className="absolute inset-0 w-5 h-5"
         viewBox="0 0 16 16"
         animate={
           isConnecting
@@ -64,7 +64,7 @@ function ActivityPulseRing({ status, agentActive }: { status: string; agentActiv
           strokeLinecap="round"
         />
       </motion.svg>
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ringColor }} />
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: ringColor }} />
     </span>
   )
 }
@@ -83,12 +83,12 @@ export function StatusBar({ agentActive }: StatusBarProps) {
   const dirtyCount = useMemo(() => files.filter((f) => f.dirty).length, [files])
 
   return (
-    <footer className="flex items-center justify-between px-3 h-[22px] border-t border-[var(--border)] bg-[var(--bg-elevated)] text-[10px] text-[var(--text-tertiary)] shrink-0">
-      <div className="flex items-center gap-3">
+    <footer className="flex items-center justify-between px-4 h-[28px] border-t border-[var(--border)] bg-[var(--bg-elevated)] text-[11px] text-[var(--text-tertiary)] shrink-0">
+      <div className="flex items-center gap-3.5">
         {/* Mode indicator dot */}
-        <span className="flex items-center gap-1.5" title={`${modeSpec.label} mode`}>
+        <span className="flex items-center gap-2" title={`${modeSpec.label} mode`}>
           <span
-            className="w-[6px] h-[6px] rounded-full"
+            className="w-[7px] h-[7px] rounded-full"
             style={{ backgroundColor: 'var(--mode-accent, var(--brand))' }}
           />
           <span className="text-[var(--text-disabled)] font-medium">{modeSpec.label}</span>
@@ -98,9 +98,9 @@ export function StatusBar({ agentActive }: StatusBarProps) {
         {dirtyCount > 0 && (
           <span
             key={dirtyCount}
-            className="flex items-center gap-1 text-[var(--warning,#eab308)] animate-badge-pop"
+            className="flex items-center gap-1.5 text-[var(--warning,#eab308)] animate-badge-pop"
           >
-            <Icon icon="lucide:circle-dot" width={8} height={8} />
+            <Icon icon="lucide:circle-dot" width={10} height={10} />
             {dirtyCount} unsaved
           </span>
         )}
@@ -114,23 +114,23 @@ export function StatusBar({ agentActive }: StatusBarProps) {
           </span>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3.5">
         <PluginSlotRenderer slot="status-bar-right" />
         {/* Terminal toggle */}
         <button
           onClick={() => layout.toggle('terminal')}
-          className={`flex items-center gap-1 px-1 py-0.5 rounded transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-1.5 py-1 rounded-lg transition-all cursor-pointer hover:scale-110 ${
             terminalVisible
               ? 'text-[var(--brand)]'
               : 'text-[var(--text-disabled)] hover:text-[var(--text-secondary)]'
           }`}
           title={`${terminalVisible ? 'Hide' : 'Show'} Terminal (⌘J)`}
         >
-          <Icon icon="lucide:terminal" width={11} height={11} />
+          <Icon icon="lucide:terminal" width={13} height={13} />
         </button>
         {/* Connection status */}
         <span
-          className="flex items-center gap-1"
+          className="flex items-center gap-1.5"
           title={
             status === 'connected'
               ? 'Gateway connected'
@@ -140,7 +140,7 @@ export function StatusBar({ agentActive }: StatusBarProps) {
           }
         >
           <span
-            className={`w-[5px] h-[5px] rounded-full ${
+            className={`w-[6px] h-[6px] rounded-full ${
               status === 'connected'
                 ? 'bg-emerald-400'
                 : status === 'connecting'
@@ -149,7 +149,7 @@ export function StatusBar({ agentActive }: StatusBarProps) {
             }`}
           />
         </span>
-        <span className="text-[var(--text-disabled)] font-medium">KnotCode</span>
+        <span className="text-[var(--text-disabled)] font-semibold">KnotCode</span>
         <ActivityPulseRing status={status} agentActive={agentActive} />
       </div>
     </footer>
