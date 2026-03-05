@@ -9,8 +9,7 @@ import { ViewProvider } from '@/context/view-context'
 import { GitHubAuthProvider } from '@/context/github-auth-context'
 import { PluginProvider } from '@/context/plugin-context'
 import { PreviewProvider } from '@/context/preview-context'
-import { WorkflowProvider } from '@/context/workflow-context'
-import { GridProvider } from '@/context/grid-context'
+
 import { LayoutProvider } from '@/context/layout-context'
 import { AppModeProvider } from '@/context/app-mode-context'
 
@@ -36,15 +35,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                       <ViewProvider>
                         <LayoutProvider>
                         <AppModeProvider>
-                        <WorkflowProvider>
-                        <GridProvider>
                         <PreviewProvider>
                         <PluginProvider>
                           {children}
                         </PluginProvider>
                         </PreviewProvider>
-                        </GridProvider>
-                        </WorkflowProvider>
                         </AppModeProvider>
                         </LayoutProvider>
                       </ViewProvider>

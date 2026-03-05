@@ -36,12 +36,11 @@ const QuickOpen = dynamic(() => import('@/components/quick-open').then(m => ({ d
 const GlobalSearch = dynamic(() => import('@/components/global-search').then(m => ({ default: m.GlobalSearch })), { ssr: false })
 const CommandPalette = dynamic(() => import('@/components/command-palette').then(m => ({ default: m.CommandPalette })), { ssr: false })
 const ShortcutsOverlay = dynamic(() => import('@/components/shortcuts-overlay').then(m => ({ default: m.ShortcutsOverlay })), { ssr: false })
-const Landing = dynamic(() => import('@/components/landing'), { ssr: false })
+
 const TerminalPanel = dynamic(() => import('@/components/terminal-panel').then(m => ({ default: m.TerminalPanel })), { ssr: false })
 const PreviewPanel = dynamic(() => import('@/components/preview/preview-panel').then(m => ({ default: m.PreviewPanel })), { ssr: false })
 const ComponentIsolatorListener = dynamic(() => import('@/components/preview/component-isolator').then(m => ({ default: m.ComponentIsolatorListener })), { ssr: false })
-const WorkflowView = dynamic(() => import('@/components/workflows/workflow-view').then(m => ({ default: m.WorkflowView })), { ssr: false })
-const GridView = dynamic(() => import('@/components/views/grid-view').then(m => ({ default: m.GridView })), { ssr: false })
+
 const PipWindow = dynamic(() => import('@/components/preview/pip-window').then(m => ({ default: m.PipWindow })), { ssr: false })
 const WidgetPipWindow = dynamic(() => import('@/components/plugins/widget-pip-window').then(m => ({ default: m.WidgetPipWindow })), { ssr: false })
 
@@ -330,7 +329,7 @@ export default function EditorLayout() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [isTauriDesktop, setIsTauriDesktop] = useState(false)
   const [isMacTauri, setIsMacTauri] = useState(false)
-  const [showLanding, setShowLanding] = useState(false)
+
   const [flashedTab, setFlashedTab] = useState<ViewId | null>(null)
   const [connectionAnim, setConnectionAnim] = useState<'pop' | 'pulse' | null>(null)
   const prevStatusRef = useRef(status)
@@ -426,8 +425,8 @@ export default function EditorLayout() {
       if (meta && e.shiftKey && e.key === 'f') { e.preventDefault(); setGlobalSearchVisible(v => !v) }
       // ⌘\\ — Toggle sidebar
       if (meta && e.key === '\\') { e.preventDefault(); layout.toggle('sidebar') }
-      // ⌘J / ⌘` — Toggle terminal
-      if (meta && (e.key === 'j' || e.key === '`') && !e.shiftKey) { e.preventDefault(); layout.toggle('terminal') }
+      // ⌘J / ⌘` — Toggle terminal (desktop only)
+      if (meta && (e.key === 'j' || e.key === '`') && !e.shiftKey && isTauriDesktop) { e.preventDefault(); layout.toggle('terminal') }
       // ⌘L — Open side chat panel and focus input
       if (meta && e.key === 'l' && !e.shiftKey) { e.preventDefault(); if (activeViewRef.current !== 'editor') setView('editor'); window.dispatchEvent(new CustomEvent('open-side-chat')); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-agent-input'))) }
       // ⌘⌥1-4 — Focus key regions (explorer/editor/chat/terminal)
@@ -437,7 +436,7 @@ export default function EditorLayout() {
         if (e.key === '1') { layout.show('tree'); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-tree'))) }
         if (e.key === '2') { requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-editor'))) }
         if (e.key === '3') { layout.show('chat'); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-agent-input'))) }
-        if (e.key === '4') { layout.show('terminal'); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-terminal'))) }
+        if (e.key === '4' && isTauriDesktop) { layout.show('terminal'); requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('focus-terminal'))) }
       }
       // Esc — Close overlays
       if (e.key === 'Escape') {
@@ -457,7 +456,7 @@ export default function EditorLayout() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [setView, visibleViews, layout])
+  }, [setView, visibleViews, layout, isTauriDesktop])
 
   // ─── Event listeners ───────────────────────────────────
   useEffect(() => {
@@ -834,8 +833,8 @@ export default function EditorLayout() {
         </>
         )}
 
-        {/* Terminal — docked (desktop) / drawer (mobile) / floating */}
-        {!isMobile ? (
+        {/* Terminal — docked (desktop) / drawer (mobile) / floating — hidden when TUI center terminal is active */}
+        {!modeSpec.terminalCenter && !isMobile ? (
           <motion.div
             initial={false}
             animate={{ height: (terminalVisible && !terminalFloating) ? terminalHeight + 3 : 0 }}
@@ -865,7 +864,7 @@ export default function EditorLayout() {
               />
             </div>
           </motion.div>
-        ) : (
+        ) : !modeSpec.terminalCenter ? (
           <AnimatePresence initial={false}>
             {terminalVisible && !terminalFloating && (
               <>
@@ -913,9 +912,9 @@ export default function EditorLayout() {
               </>
             )}
           </AnimatePresence>
-        )}
+        ) : null}
 
-        {terminalVisible && terminalFloating && (
+        {terminalVisible && terminalFloating && !modeSpec.terminalCenter && (
           <FloatingPanel
             panel="terminal"
             title="Terminal"

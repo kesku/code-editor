@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from '@iconify/react'
 import { cn } from '@/lib/utils'
 import { useView, type ViewId } from '@/context/view-context'
+import { isTauri } from '@/lib/tauri'
 
 type CommandId =
   | 'find-files'
@@ -144,21 +145,28 @@ export function CommandPalette({ open, onClose, onRun }: CommandPaletteProps) {
   const [recentIds, setRecentIds] = useState<CommandId[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => { setIsDesktop(isTauri()) }, [])
 
   const { activeView } = useView()
 
   // Load recent commands on mount
   useEffect(() => { setRecentIds(loadRecent()) }, [])
 
+  const available = useMemo(() => {
+    if (isDesktop) return COMMANDS
+    return COMMANDS.filter(c => c.id !== 'toggle-terminal')
+  }, [isDesktop])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return COMMANDS
-    return COMMANDS.filter((command) => {
+    if (!q) return available
+    return available.filter((command) => {
       if (command.label.toLowerCase().includes(q)) return true
       if (command.hint.toLowerCase().includes(q)) return true
       return command.keywords.some(k => k.includes(q))
     })
-  }, [query])
+  }, [query, available])
 
   // Build display groups: recently used + context-aware + standard groups
   const displayGroups = useMemo(() => {

@@ -1,30 +1,32 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Icon } from '@iconify/react'
+import { isTauri } from '@/lib/tauri'
 
 interface ShortcutsOverlayProps {
   open: boolean
   onClose: () => void
 }
 
-const SECTIONS = [
-  {
-    title: 'Navigation',
-    shortcuts: [
-      { keys: ['⌘', 'K'], desc: 'Command palette' },
-      { keys: ['⌘', 'P'], desc: 'Quick file open' },
-      { keys: ['⌘', 'B'], desc: 'Toggle file explorer' },
-      { keys: ['⌘', 'J'], desc: 'Toggle agent panel' },
-      { keys: ['⌘', '`'], desc: 'Toggle terminal' },
-      { keys: ['⌘', '⇧', 'E'], desc: 'Toggle Gateway Engine' },
-      { keys: ['⌘', '⌥', '1'], desc: 'Focus Explorer' },
-      { keys: ['⌘', '⌥', '2'], desc: 'Focus Editor' },
-      { keys: ['⌘', '⌥', '3'], desc: 'Focus Chat' },
-      { keys: ['⌘', '⌥', '4'], desc: 'Focus Terminal' },
-      { keys: ['?'], desc: 'This shortcuts overlay' },
-    ],
-  },
+const NAV_SHORTCUTS = [
+  { keys: ['⌘', 'K'], desc: 'Command palette' },
+  { keys: ['⌘', 'P'], desc: 'Quick file open' },
+  { keys: ['⌘', 'B'], desc: 'Toggle file explorer' },
+  { keys: ['⌘', 'J'], desc: 'Toggle agent panel' },
+  { keys: ['⌘', '⇧', 'E'], desc: 'Toggle Gateway Engine' },
+  { keys: ['⌘', '⌥', '1'], desc: 'Focus Explorer' },
+  { keys: ['⌘', '⌥', '2'], desc: 'Focus Editor' },
+  { keys: ['⌘', '⌥', '3'], desc: 'Focus Chat' },
+  { keys: ['?'], desc: 'This shortcuts overlay' },
+]
+
+const NAV_TERMINAL_SHORTCUTS = [
+  { keys: ['⌘', '`'], desc: 'Toggle terminal' },
+  { keys: ['⌘', '⌥', '4'], desc: 'Focus Terminal' },
+]
+
+const STATIC_SECTIONS = [
   {
     title: 'Editing',
     shortcuts: [
@@ -52,6 +54,17 @@ const SECTIONS = [
 ]
 
 export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => { setIsDesktop(isTauri()) }, [])
+
+  const sections = useMemo(() => [
+    {
+      title: 'Navigation',
+      shortcuts: isDesktop ? [...NAV_SHORTCUTS, ...NAV_TERMINAL_SHORTCUTS] : NAV_SHORTCUTS,
+    },
+    ...STATIC_SECTIONS,
+  ], [isDesktop])
+
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => {
@@ -89,7 +102,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
 
         {/* Sections */}
         <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
-          {SECTIONS.map(section => (
+          {sections.map(section => (
             <div key={section.title}>
               <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-tertiary)] mb-2.5 flex items-center gap-2">
                 {section.title}
