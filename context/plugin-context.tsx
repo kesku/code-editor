@@ -17,6 +17,8 @@ interface PluginState {
   enabledPlugins: Record<string, boolean>
   togglePlugin: (id: string) => void
   isPluginEnabled: (id: string) => boolean
+  pipPluginId: string | null
+  setPipPluginId: (id: string | null) => void
 }
 
 const PluginContext = createContext<PluginState | null>(null)
@@ -35,13 +37,14 @@ function loadEnabledPlugins(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
-  } catch {}
+  } catch { }
   return {}
 }
 
 export function PluginProvider({ children }: { children: ReactNode }) {
   const [slots, setSlots] = useState<Record<PluginSlot, PluginEntry[]>>(EMPTY_SLOTS)
   const [enabledPlugins, setEnabledPlugins] = useState<Record<string, boolean>>(loadEnabledPlugins)
+  const [pipPluginId, setPipPluginId] = useState<string | null>(null)
 
   const registerPlugin = useCallback((slot: PluginSlot, entry: PluginEntry) => {
     setSlots(prev => {
@@ -70,7 +73,7 @@ export function PluginProvider({ children }: { children: ReactNode }) {
   const togglePlugin = useCallback((id: string) => {
     setEnabledPlugins(prev => {
       const next = { ...prev, [id]: !(prev[id] ?? true) }
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch { }
       return next
     })
   }, [])
@@ -81,7 +84,8 @@ export function PluginProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<PluginState>(() => ({
     slots, registerPlugin, unregisterPlugin, enabledPlugins, togglePlugin, isPluginEnabled,
-  }), [slots, registerPlugin, unregisterPlugin, enabledPlugins, togglePlugin, isPluginEnabled])
+    pipPluginId, setPipPluginId,
+  }), [slots, registerPlugin, unregisterPlugin, enabledPlugins, togglePlugin, isPluginEnabled, pipPluginId])
 
   return (
     <PluginContext.Provider value={value}>

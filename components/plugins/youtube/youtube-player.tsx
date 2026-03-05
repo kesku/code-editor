@@ -49,9 +49,9 @@ function parseYouTubeUrl(input: string): PlaylistInfo | null {
 
 function buildEmbedUrl(info: PlaylistInfo): string {
   if (info.type === 'playlist') {
-    return `https://www.youtube.com/embed/videoseries?list=${info.id}&autoplay=1`
+    return `https://www.youtube.com/embed/videoseries?list=${info.id}`
   }
-  return `https://www.youtube.com/embed/${info.id}?autoplay=1`
+  return `https://www.youtube.com/embed/${info.id}`
 }
 
 interface HistoryEntry {
@@ -75,11 +75,8 @@ function saveHistory(entries: HistoryEntry[]) {
 }
 
 const CURATED_PLAYLISTS = [
-  { id: 'PLOzDu-MXXLliO9fBNZOQTBDddoA3FzZUo', label: 'Lofi Hip Hop', icon: 'lucide:coffee' },
-  { id: 'PLDfKAXSi6kUZWNR_WJBLwMsDqzBkOGJnN', label: 'Synthwave', icon: 'lucide:zap' },
-  { id: 'PLMC9KNkIncKtPzgY-5rmhvj7fax8fdxoj', label: 'Pop Hits', icon: 'lucide:star' },
-  { id: 'PLgzTt0k8mXzEk586JUBaJMTPgd0N7YFKR', label: 'Jazz & Chill', icon: 'lucide:music' },
-  { id: 'PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf', label: 'Classical Study', icon: 'lucide:book-open' },
+  { id: 'PLl578ZPbYIlFcSxuka8Km37VgbUYUWI5p', label: 'Lofi (Anime)', icon: 'lucide:coffee' },
+  { id: 'PLp61JrZcGK7-BofsCt7bbEoF8tmus13bk', label: 'AI News', icon: 'lucide:zap' },
 ]
 
 export function YouTubePlayer() {
