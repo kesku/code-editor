@@ -438,7 +438,11 @@ export default function EditorLayout() {
                     }}
                     onClick={() => setView(v)}
                     className={`folder-tab ${isActive ? 'folder-tab--active' : ''} ${flashedTab === v ? 'folder-tab--flash' : ''}`}
-                    style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-disabled)' }}
+                    style={
+                      {
+                        '--color': isActive ? 'var(--text-primary)' : 'var(--text-disabled)',
+                      } as React.CSSProperties
+                    }
                     title={`${VIEW_ICONS[v].label} (\u2318${i + 1})`}
                     whileTap={{ scale: 0.95 }}
                     layout
@@ -467,7 +471,7 @@ export default function EditorLayout() {
                   width: Math.max(0, indicatorStyle.width - 12),
                 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                style={{ opacity: indicatorStyle.width > 0 ? 1 : 0 }}
+                style={{ '--opacity': indicatorStyle.width > 0 ? 1 : 0 } as React.CSSProperties}
               />
             </div>
           )}
@@ -572,7 +576,7 @@ export default function EditorLayout() {
             initial={false}
             animate={{ height: terminalVisible && !terminalFloating ? terminalHeight + 3 : 0 }}
             transition={TERMINAL_SPRING}
-            style={{ overflow: 'hidden' }}
+            style={{ '--overflow': 'hidden' } as React.CSSProperties}
             className="shrink-0"
           >
             <div
@@ -629,12 +633,14 @@ export default function EditorLayout() {
                   exit={{ y: 520 }}
                   transition={TERMINAL_SPRING}
                   className="fixed left-2 right-2 bottom-2 z-[80] rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] shadow-2xl overflow-hidden"
-                  style={{
-                    height: Math.min(
-                      Math.max(terminalHeight, 260),
-                      Math.floor(window.innerHeight * 0.72),
-                    ),
-                  }}
+                  style={
+                    {
+                      '--height': Math.min(
+                        Math.max(terminalHeight, 260),
+                        Math.floor(window.innerHeight * 0.72),
+                      ),
+                    } as React.CSSProperties
+                  }
                 >
                   <div className="h-10 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                     <span className="text-[11px] font-semibold text-[var(--text-primary)] flex items-center gap-2">
