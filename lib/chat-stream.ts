@@ -87,10 +87,8 @@ export function handleChatEvent(
   // Ignore inline-completion traffic
   if (idempotencyKey?.startsWith('completion-')) return
 
-  // Match by idempotency key or session key fallback
+  // Match by idempotency key OR session key
   const matchesIdem = !!(idempotencyKey && state.sentKeys.has(idempotencyKey))
-  // Session-key match: accept if isSending OR if this is a final/delta/error/aborted event
-  // (isSending may be false after HMR rebuild, but we still want the reply)
   const isReplyEvent =
     eventState === 'delta' ||
     eventState === 'final' ||
@@ -98,8 +96,8 @@ export function handleChatEvent(
     eventState === 'aborted' ||
     eventState === 'tool_use' ||
     eventState === 'tool_start'
-  const matchesSession =
-    !idempotencyKey && eventSessionKey === state.sessionKey && (state.isSending || isReplyEvent)
+  // Session-key match: accept reply events for our session even if sentKeys was lost (HMR)
+  const matchesSession = eventSessionKey === state.sessionKey && (state.isSending || isReplyEvent)
   if (!matchesIdem && !matchesSession) {
     debugLog('Ignoring unrelated chat event', {
       eventState,
