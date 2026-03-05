@@ -366,9 +366,9 @@ function TerminalPane({
           </button>
         )}
 
-        <span className="text-[10px] text-[var(--text-tertiary)] font-mono ml-1 shrink-0">
+        {/* <span className="text-[10px] text-[var(--text-tertiary)] font-mono ml-1 shrink-0">
           {isDesktop ? 'PTY' : 'web'}
-        </span>
+        </span> */}
       </div>
 
       {/* Terminal viewport */}

@@ -43,6 +43,7 @@ const ComponentIsolatorListener = dynamic(() => import('@/components/preview/com
 const WorkflowView = dynamic(() => import('@/components/workflows/workflow-view').then(m => ({ default: m.WorkflowView })), { ssr: false })
 const GridView = dynamic(() => import('@/components/views/grid-view').then(m => ({ default: m.GridView })), { ssr: false })
 const PipWindow = dynamic(() => import('@/components/preview/pip-window').then(m => ({ default: m.PipWindow })), { ssr: false })
+const WidgetPipWindow = dynamic(() => import('@/components/plugins/widget-pip-window').then(m => ({ default: m.WidgetPipWindow })), { ssr: false })
 
 const VIEW_ICONS: Record<string, { icon: string; label: string }> = {
   editor: { icon: 'lucide:code-2', label: 'Editor' },
@@ -134,7 +135,7 @@ const PLUGIN_META: Record<string, { label: string; icon: string; color: string }
 }
 
 function SidebarPluginSlot() {
-  const { slots, isPluginEnabled, togglePlugin } = usePlugins()
+  const { slots, isPluginEnabled, togglePlugin, pipPluginId, setPipPluginId } = usePlugins()
   const layout = useLayout()
   const hiddenByLayout = !layout.isVisible('plugins')
   const pluginsResize = usePanelResize('plugins')
@@ -146,7 +147,7 @@ function SidebarPluginSlot() {
   useEffect(() => { try { localStorage.setItem('ce:sidebar-plugins-collapsed', String(collapsed)) } catch {} }, [collapsed])
 
   const sorted = useMemo(() => [...entries].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)), [entries])
-  const enabledSorted = useMemo(() => sorted.filter(e => isPluginEnabled(e.id)), [sorted, isPluginEnabled])
+  const enabledSorted = useMemo(() => sorted.filter(e => isPluginEnabled(e.id) && e.id !== pipPluginId), [sorted, isPluginEnabled, pipPluginId])
 
   const [ratios, setRatios] = useState<Record<string, number>>(() => {
     try {
@@ -267,6 +268,7 @@ function SidebarPluginSlot() {
           {enabledSorted.map((e, i) => {
             const C = e.component
             const ratio = ratios[e.id] ?? defaultRatio
+            const meta = PLUGIN_META[e.id]
             return (
               <div key={e.id} className="flex flex-col min-h-0" style={{ flex: `${ratio} 1 0%` }}>
                 {i > 0 && (
@@ -278,7 +280,14 @@ function SidebarPluginSlot() {
                     <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[var(--text-disabled)] opacity-0 group-hover/divider:opacity-30 group-hover/divider:bg-[var(--brand)] transition-all" />
                   </div>
                 )}
-                <div className="flex-1 min-h-0 overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden relative group/plugin">
+                  <button
+                    onClick={() => setPipPluginId(e.id)}
+                    className="absolute top-1 right-1 z-10 p-1 rounded-md bg-[var(--bg-elevated)]/80 backdrop-blur-sm text-[var(--text-disabled)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer opacity-0 group-hover/plugin:opacity-100 transition-opacity"
+                    title={`Pop out ${meta?.label ?? 'plugin'}`}
+                  >
+                    <Icon icon="lucide:picture-in-picture-2" width={12} height={12} />
+                  </button>
                   <C />
                 </div>
               </div>
@@ -900,6 +909,7 @@ export default function EditorLayout() {
       <SpotifyPlugin />
       <YouTubePlugin />
       <PipWindow />
+      <WidgetPipWindow />
       <ComponentIsolatorListener />
       <PluginSlotRenderer slot="floating" />
 

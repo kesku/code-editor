@@ -111,7 +111,6 @@ export function FloatingPanel({
       <div
         className="h-10 px-3 flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_80%,transparent)] cursor-move select-none"
         onMouseDown={onDragStart}
-        data-tauri-drag-region
       >
         <div className="flex items-center gap-2 min-w-0">
           <Icon icon={icon} width={14} height={14} className="text-[var(--brand)] shrink-0" />

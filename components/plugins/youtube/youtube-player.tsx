@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Icon } from '@iconify/react'
+import { usePlugins } from '@/context/plugin-context'
 
 const STORAGE_KEY = 'knot:youtube-playlist'
 const HISTORY_KEY = 'knot:youtube-history'
@@ -80,6 +81,7 @@ const CURATED_PLAYLISTS = [
 ]
 
 export function YouTubePlayer() {
+  const { setPipPluginId } = usePlugins()
   const [input, setInput] = useState('')
   const [current, setCurrent] = useState<PlaylistInfo | null>(() => {
     try {
@@ -110,31 +112,9 @@ export function YouTubePlayer() {
     try { localStorage.setItem('knot:youtube-ratio', ratio) } catch {}
   }, [ratio])
 
-  const popoutPiP = useCallback(async () => {
-    if (!current) return
-    const embedUrl = buildEmbedUrl(current)
-    const dpp = (window as any).documentPictureInPicture
-    if (dpp?.requestWindow) {
-      try {
-        const pipWin = await dpp.requestWindow({ width: 420, height: 236 })
-        pipWin.document.body.style.margin = '0'
-        pipWin.document.body.style.background = '#000'
-        const iframe = pipWin.document.createElement('iframe')
-        iframe.src = embedUrl
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
-        iframe.allowFullscreen = true
-        iframe.style.width = '100%'
-        iframe.style.height = '100%'
-        iframe.style.border = '0'
-        pipWin.document.body.appendChild(iframe)
-        return
-      } catch {
-        // fallback to popup below
-      }
-    }
-
-    window.open(embedUrl, 'youtube-pip', 'popup=yes,width=420,height=236')
-  }, [current])
+  const popoutPiP = useCallback(() => {
+    setPipPluginId('youtube-player')
+  }, [setPipPluginId])
 
   const loadPlaylist = useCallback((value?: string) => {
     const raw = value ?? input

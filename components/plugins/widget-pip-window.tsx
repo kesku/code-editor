@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import { usePlugins } from '@/context/plugin-context'
+import { useLayout } from '@/context/layout-context'
 
 const MIN_W = 260
 const MIN_H = 200
@@ -25,6 +26,12 @@ const PLUGIN_META: Record<string, { label: string; icon: string; color: string }
 
 export function WidgetPipWindow() {
   const { pipPluginId, setPipPluginId, slots } = usePlugins()
+  const layout = useLayout()
+
+  const expandToSidebar = useCallback(() => {
+    setPipPluginId(null)
+    if (!layout.isVisible('plugins')) layout.toggle('plugins')
+  }, [setPipPluginId, layout])
 
   const entry = useMemo(() => {
     if (!pipPluginId) return null
@@ -169,7 +176,7 @@ export function WidgetPipWindow() {
             <div className="flex gap-1">
               <div className="w-2 h-2 rounded-full bg-[#ff5f57] cursor-pointer tauri-no-drag" onClick={() => setPipPluginId(null)} title="Close" />
               <div className="w-2 h-2 rounded-full bg-[#ffbd2e] cursor-pointer tauri-no-drag" onClick={() => setSnapped(snapped === 'br' ? 'tl' : 'br')} title="Move" />
-              <div className="w-2 h-2 rounded-full bg-[#28c840] cursor-pointer tauri-no-drag" onClick={() => setPipPluginId(null)} title="Back to sidebar" />
+              <div className="w-2 h-2 rounded-full bg-[#28c840] cursor-pointer tauri-no-drag" onClick={expandToSidebar} title="Expand" />
             </div>
             <Icon icon={iconName} width={11} height={11} style={{ color: accentColor }} className="ml-1" />
             <span className="text-[9px] text-[var(--text-disabled)] select-none">{label}</span>

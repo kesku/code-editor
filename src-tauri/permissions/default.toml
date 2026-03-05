@@ -91,6 +91,11 @@ description = "Allows checking out a git branch"
 commands.allow = ["local_git_checkout"]
 
 [[permission]]
+identifier = "allow-local-git-add"
+description = "Allows staging files via git add"
+commands.allow = ["local_git_add"]
+
+[[permission]]
 identifier = "allow-local-git-unstage"
 description = "Allows unstaging files via git reset"
 commands.allow = ["local_git_unstage"]

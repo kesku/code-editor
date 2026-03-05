@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Icon } from '@iconify/react'
+import { usePlugins } from '@/context/plugin-context'
 import {
   spotifyAvailable,
   isSpotifyAuthenticated,
@@ -69,6 +70,7 @@ function formatMs(ms: number): string {
 }
 
 export function SpotifyPlayer() {
+  const { setPipPluginId } = usePlugins()
   const [authenticated, setAuthenticated] = useState(false)
   const [visible, setVisible] = useState(true)
   const [loggingIn, setLoggingIn] = useState(false)
@@ -231,18 +233,7 @@ export function SpotifyPlayer() {
         {authenticated && (
           <>
             <button
-              onClick={() => {
-                const currentTrackId = playerState?.track_window.current_track?.id
-                const url = currentTrackId ? `https://open.spotify.com/track/${currentTrackId}` : 'https://open.spotify.com/'
-                const dpp = (window as any).documentPictureInPicture
-                if (dpp?.requestWindow) {
-                  dpp.requestWindow({ width: 380, height: 120 }).then((pipWin: Window) => {
-                    pipWin.location.href = url
-                  }).catch(() => window.open(url, 'spotify-pip', 'popup=yes,width=420,height=140'))
-                } else {
-                  window.open(url, 'spotify-pip', 'popup=yes,width=420,height=140')
-                }
-              }}
+              onClick={() => setPipPluginId('spotify-player')}
               className="p-0.5 rounded cursor-pointer text-[var(--text-disabled)] hover:text-[var(--text-secondary)]"
               title="Pop out to PiP"
             >
