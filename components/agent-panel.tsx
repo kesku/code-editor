@@ -37,6 +37,12 @@ import {
   buildEditorContext,
   getEffectiveSystemPrompt,
 } from '@/lib/agent-session'
+import {
+  SKILL_FIRST_OVERRIDE_TOKEN,
+  buildSkillFirstBlockMessage,
+  evaluateSkillFirstPolicy,
+  updateSkillProbeFromMessage,
+} from '@/lib/skill-first-policy'
 
 // ChatMessage type imported from @/lib/chat-stream
 
@@ -685,6 +691,41 @@ export function AgentPanel() {
     })
   }, [])
 
+  const enforceSkillFirstPolicy = useCallback(
+    (message: string): boolean => {
+      updateSkillProbeFromMessage(sessionKey, message)
+      const policy = evaluateSkillFirstPolicy({
+        sessionKey,
+        message,
+        mode: 'hard_with_override',
+      })
+
+      if (policy.blocked) {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'error',
+          content: buildSkillFirstBlockMessage(policy),
+          timestamp: Date.now(),
+        })
+        return false
+      }
+
+      if (policy.overrideUsed) {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'status',
+          content: `Skill-first override accepted via ${SKILL_FIRST_OVERRIDE_TOKEN}.`,
+          timestamp: Date.now(),
+        })
+      }
+
+      return true
+    },
+    [appendMessage, sessionKey],
+  )
+
   const collectCommitChangesForGeneration = useCallback(async (): Promise<
     CommitMessageChange[]
   > => {
@@ -1058,6 +1099,11 @@ export function AgentPanel() {
       }
       return
     }
+
+    if (!enforceSkillFirstPolicy(text)) {
+      return
+    }
+
     setSending(true)
     streamStateRef.current.isSending = true
 
@@ -1248,6 +1294,7 @@ export function AgentPanel() {
     ensureSessionInit,
     collectCommitChangesForGeneration,
     logChatDebug,
+    enforceSkillFirstPolicy,
   ])
 
   // ─── Handle ⌘K inline edit requests ────────────────────────────
@@ -1261,6 +1308,7 @@ export function AgentPanel() {
     }) => {
       const { filePath, instruction, selectedText, startLine, endLine } = detail
       if (!isConnected || sending) return
+      if (!enforceSkillFirstPolicy(instruction)) return
       logChatDebug('inline edit request', {
         filePath,
         startLine,
@@ -1358,7 +1406,16 @@ export function AgentPanel() {
         })
     }
     return on('inline-edit-request', handler)
-  }, [isConnected, sending, sendRequest, buildContext, appendMessage, sessionKey, logChatDebug])
+  }, [
+    isConnected,
+    sending,
+    sendRequest,
+    buildContext,
+    appendMessage,
+    sessionKey,
+    logChatDebug,
+    enforceSkillFirstPolicy,
+  ])
 
   // ─── Diff review flow ─────────────────────────────────────────
   const handleShowDiff = useCallback(

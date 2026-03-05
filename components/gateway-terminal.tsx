@@ -18,6 +18,12 @@ import { Icon } from '@iconify/react'
 import { useGateway } from '@/context/gateway-context'
 import { useTheme } from '@/context/theme-context'
 import { MarkdownPreview } from '@/components/markdown-preview'
+import {
+  SKILL_FIRST_OVERRIDE_TOKEN,
+  buildSkillFirstBlockMessage,
+  evaluateSkillFirstPolicy,
+  updateSkillProbeFromMessage,
+} from '@/lib/skill-first-policy'
 
 // ─── Command registry ────────────────────────────────────
 
@@ -544,6 +550,20 @@ export function GatewayTerminal() {
     }
 
     // Chat send (slash command or plain text)
+    updateSkillProbeFromMessage('main', trimmed)
+    const policy = evaluateSkillFirstPolicy({
+      sessionKey: 'main',
+      message: trimmed,
+      mode: 'hard_with_override',
+    })
+    if (policy.blocked) {
+      addEntry('error', buildSkillFirstBlockMessage(policy))
+      return
+    }
+    if (policy.overrideUsed) {
+      addEntry('system', `Skill-first override accepted via ${SKILL_FIRST_OVERRIDE_TOKEN}.`)
+    }
+
     setSending(true)
     try {
       const resp = (await sendRequest('chat.send', {
