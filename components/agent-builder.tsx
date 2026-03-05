@@ -1,0 +1,732 @@
+'use client'
+
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { Icon } from '@iconify/react'
+import {
+  type AgentConfig,
+  DEFAULT_BEHAVIORS,
+  CODE_EDITOR_SYSTEM_PROMPT,
+  saveAgentConfig,
+} from '@/lib/agent-session'
+
+// ─── Persona Presets ─────────────────────────────────────────────
+
+interface PersonaPreset {
+  id: string
+  emoji: string
+  name: string
+  description: string
+  prompt: string
+}
+
+const PERSONA_PRESETS: PersonaPreset[] = [
+  {
+    id: 'fullstack',
+    emoji: '\u{1F525}',
+    name: 'Full-Stack Engineer',
+    description: 'Expert across the entire stack. Ships fast, reviews carefully.',
+    prompt: CODE_EDITOR_SYSTEM_PROMPT,
+  },
+  {
+    id: 'frontend',
+    emoji: '\u{1F3AF}',
+    name: 'Frontend Specialist',
+    description: 'Pixel-perfect UI, accessibility, performance obsessed.',
+    prompt: [
+      'You are a Frontend Specialist agent embedded in a browser-based code editor.',
+      '',
+      '## Role',
+      'You are a senior frontend engineer obsessed with UI quality, accessibility, and web performance. You build responsive, beautiful interfaces that work for everyone.',
+      '',
+      '## Core Expertise',
+      '- **React / Next.js** (App Router, Server Components, hooks, state, concurrent features) — expert',
+      '- **TypeScript** (strict mode, generics, utility types) — expert',
+      '- **CSS / Tailwind** (v4, Grid, Flexbox, animations, custom properties, responsive) — expert',
+      '- **Accessibility** (ARIA, keyboard nav, screen readers, WCAG 2.1 AA) — expert',
+      '- **Performance** (Core Web Vitals, bundle splitting, lazy loading, memoization) — expert',
+      '- **Design Systems** (component APIs, tokens, theming, Storybook) — expert',
+      '',
+      '## Behavior Rules',
+      "1. **Propose, don't auto-apply.** Wrap edits in `[EDIT path/to/file.ext]` markers with a fenced code block.",
+      '2. **Complete files.** Provide full file content — no shortcuts.',
+      '3. **Accessibility first.** Every component must be keyboard-navigable and screen-reader friendly.',
+      '4. **Visual precision.** Pixel-perfect layouts, consistent spacing, proper typography.',
+      '5. **Be direct.** No filler. State findings and provide code.',
+      '6. **Flag risks.** Security implications, performance impact, or breaking changes — say so upfront.',
+      '',
+      '## Output Format',
+      'When proposing edits, use: [EDIT path/to/file.ext] followed by a fenced code block with the COMPLETE file.',
+      'Always end with a **Next step**.',
+    ].join('\n'),
+  },
+  {
+    id: 'security',
+    emoji: '\u{1F6E1}\u{FE0F}',
+    name: 'Security Engineer',
+    description: 'Defense-first. Finds vulnerabilities before attackers do.',
+    prompt: [
+      'You are a Security Engineer agent embedded in a browser-based code editor.',
+      '',
+      '## Role',
+      'You are a senior security engineer. Every code review is a threat model. You find vulnerabilities before attackers do and write secure code by default.',
+      '',
+      '## Core Expertise',
+      '- **Web Security** (XSS, CSRF, CSP, CORS, injection, DOMPurify) — expert',
+      '- **Authentication** (OAuth2, OIDC, JWTs, session management) — expert',
+      '- **Authorization** (RBAC, ABAC, row-level security, API token scoping) — expert',
+      '- **Infrastructure** (TLS, secrets management, rate limiting, IP allowlists) — expert',
+      '- **Code Auditing** (dependency auditing, supply chain, SAST, credential scanning) — expert',
+      '- **Cryptography** (hashing, signing, encryption at rest/in-transit, key rotation) — expert',
+      '- **TypeScript / Node.js** (strict mode, secure patterns) — proficient',
+      '',
+      '## Behavior Rules',
+      "1. **Propose, don't auto-apply.** Wrap edits in `[EDIT path/to/file.ext]` markers with a fenced code block.",
+      '2. **Complete files.** Provide full file content — no shortcuts.',
+      '3. **Security first.** Every change is reviewed for vulnerabilities. Flag OWASP Top 10 risks.',
+      '4. **Threat model.** When reviewing code, identify attack surfaces and trust boundaries.',
+      '5. **Be direct.** No filler. State findings and severity.',
+      '6. **Never store secrets in code.** Always flag hardcoded credentials, API keys, or tokens.',
+      '',
+      '## Output Format',
+      'When proposing edits, use: [EDIT path/to/file.ext] followed by a fenced code block with the COMPLETE file.',
+      'Always end with a **Next step**.',
+    ].join('\n'),
+  },
+  {
+    id: 'architect',
+    emoji: '\u{1F3D7}\u{FE0F}',
+    name: 'Systems Architect',
+    description: 'Designs for scale. Thinks in distributed systems.',
+    prompt: [
+      'You are a Systems Architect agent embedded in a browser-based code editor.',
+      '',
+      '## Role',
+      'You are a principal architect who designs for scale, reliability, and maintainability. You think in system boundaries, data flows, and failure modes.',
+      '',
+      '## Core Expertise',
+      '- **System Design** (microservices, event-driven, CQRS, domain-driven design) — expert',
+      '- **Databases** (PostgreSQL, Redis, query optimization, sharding, replication) — expert',
+      '- **Infrastructure** (Docker, Kubernetes, CI/CD, observability, load balancing) — expert',
+      '- **API Design** (REST, GraphQL, gRPC, versioning, rate limiting) — expert',
+      '- **TypeScript / Node.js** (ESM, streams, workers, performance) — expert',
+      '- **Cloud** (AWS, Vercel, edge computing, serverless, CDN) — proficient',
+      '',
+      '## Behavior Rules',
+      "1. **Propose, don't auto-apply.** Wrap edits in `[EDIT path/to/file.ext]` markers with a fenced code block.",
+      '2. **Complete files.** Provide full file content — no shortcuts.',
+      '3. **Think at scale.** Consider concurrency, caching, failure modes, and data consistency.',
+      '4. **Document decisions.** Explain architectural trade-offs and alternatives considered.',
+      '5. **Be direct.** No filler. State the design and rationale.',
+      '6. **Flag risks.** Scaling bottlenecks, single points of failure, and data integrity concerns.',
+      '',
+      '## Output Format',
+      'When proposing edits, use: [EDIT path/to/file.ext] followed by a fenced code block with the COMPLETE file.',
+      'Always end with a **Next step**.',
+    ].join('\n'),
+  },
+  {
+    id: 'custom',
+    emoji: '\u{2728}',
+    name: 'Custom',
+    description: 'Write your own from scratch.',
+    prompt: '',
+  },
+]
+
+// ─── Behavior Definitions ────────────────────────────────────────
+
+interface BehaviorDef {
+  key: string
+  label: string
+  description: string
+  defaultValue: boolean
+}
+
+const BEHAVIOR_DEFS: BehaviorDef[] = [
+  {
+    key: 'proposeEdits',
+    label: 'Always propose edits (never auto-apply)',
+    description: 'Agent shows diffs for your review before applying',
+    defaultValue: true,
+  },
+  {
+    key: 'fullFileContent',
+    label: 'Include full file content in edits',
+    description: 'Complete files for accurate diff rendering',
+    defaultValue: true,
+  },
+  {
+    key: 'flagSecurity',
+    label: 'Flag security concerns',
+    description: 'Highlight OWASP risks and vulnerabilities',
+    defaultValue: true,
+  },
+  {
+    key: 'explainReasoning',
+    label: 'Explain reasoning for non-obvious changes',
+    description: 'Brief rationale for architectural decisions',
+    defaultValue: true,
+  },
+  {
+    key: 'generateTests',
+    label: 'Generate tests when writing new code',
+    description: 'Auto-suggest test cases alongside implementations',
+    defaultValue: false,
+  },
+]
+
+// ─── Trait Extraction ────────────────────────────────────────────
+
+function extractTraits(prompt: string): string[] {
+  const traits: string[] = []
+  const text = prompt.toLowerCase()
+  const checks = [
+    { keywords: ['full-stack', 'fullstack'], label: 'Full-Stack' },
+    { keywords: ['frontend', 'front-end', 'ui quality'], label: 'Frontend' },
+    { keywords: ['security', 'vulnerab', 'owasp'], label: 'Security' },
+    { keywords: ['architect', 'scale', 'distributed'], label: 'Architecture' },
+    { keywords: ['typescript', ' ts '], label: 'TypeScript' },
+    { keywords: ['react'], label: 'React' },
+    { keywords: ['next.js', 'nextjs', 'app router'], label: 'Next.js' },
+    { keywords: ['python'], label: 'Python' },
+    { keywords: ['rust'], label: 'Rust' },
+    { keywords: ['accessibility', 'a11y', 'wcag'], label: 'Accessibility' },
+    { keywords: ['performance', 'core web vitals', 'optimiz'], label: 'Performance' },
+    { keywords: ['database', 'sql', 'postgres'], label: 'Database' },
+    { keywords: ['docker', 'kubernetes', 'devops'], label: 'DevOps' },
+    { keywords: ['direct', 'concise', 'no filler'], label: 'Concise' },
+    { keywords: ['test', 'testing'], label: 'Testing' },
+    { keywords: ['git'], label: 'Git' },
+  ]
+
+  for (const check of checks) {
+    if (check.keywords.some((k) => text.includes(k))) {
+      traits.push(check.label)
+    }
+  }
+  return traits.slice(0, 8)
+}
+
+// ─── Component ──────────────────────────────────────────────────
+
+interface Props {
+  onComplete: (config: AgentConfig) => void
+  onSkip?: () => void
+  compact?: boolean
+}
+
+export function AgentBuilder({ onComplete, onSkip, compact }: Props) {
+  const [step, setStep] = useState(0)
+  const [selectedPersona, setSelectedPersona] = useState<string>('fullstack')
+  const [systemPrompt, setSystemPrompt] = useState(PERSONA_PRESETS[0].prompt)
+  const [originalPrompt, setOriginalPrompt] = useState(PERSONA_PRESETS[0].prompt)
+  const [behaviors, setBehaviors] = useState<Record<string, boolean>>({ ...DEFAULT_BEHAVIORS })
+  const [modelPreference, setModelPreference] = useState('')
+  const stepRef = useRef<HTMLDivElement>(null)
+
+  const selectedPreset = useMemo(
+    () => PERSONA_PRESETS.find((p) => p.id === selectedPersona) ?? PERSONA_PRESETS[0],
+    [selectedPersona],
+  )
+
+  const traits = useMemo(() => extractTraits(systemPrompt), [systemPrompt])
+  const charCount = systemPrompt.length
+
+  const handleSelectPersona = useCallback((id: string) => {
+    setSelectedPersona(id)
+    const preset = PERSONA_PRESETS.find((p) => p.id === id)
+    if (preset) {
+      setSystemPrompt(preset.prompt)
+      setOriginalPrompt(preset.prompt)
+    }
+  }, [])
+
+  const handleResetPrompt = useCallback(() => {
+    setSystemPrompt(originalPrompt)
+  }, [originalPrompt])
+
+  const handleToggleBehavior = useCallback((key: string) => {
+    setBehaviors((prev) => ({ ...prev, [key]: !prev[key] }))
+  }, [])
+
+  const handleActivate = useCallback(() => {
+    const config: AgentConfig = {
+      persona: selectedPersona,
+      systemPrompt,
+      behaviors,
+      modelPreference,
+    }
+    saveAgentConfig(config)
+    onComplete(config)
+  }, [selectedPersona, systemPrompt, behaviors, modelPreference, onComplete])
+
+  const canProceed = step === 1 ? systemPrompt.trim().length > 0 : true
+  const isPromptModified = systemPrompt !== originalPrompt
+
+  // Scroll step into view on change
+  useEffect(() => {
+    stepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [step])
+
+  const steps = ['Persona', 'Customize', 'Behavior', 'Activate']
+
+  return (
+    <div className="space-y-4">
+      {/* Step indicator */}
+      <div className="flex items-center gap-1">
+        {steps.map((label, i) => (
+          <button
+            key={label}
+            onClick={() => i < step && setStep(i)}
+            disabled={i > step}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
+              i === step
+                ? 'text-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_10%,transparent)]'
+                : i < step
+                  ? 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer'
+                  : 'text-[var(--text-disabled)] cursor-not-allowed'
+            }`}
+          >
+            <span
+              className={`w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center ${
+                i < step
+                  ? 'bg-[var(--brand)] text-[var(--brand-contrast,#fff)]'
+                  : i === step
+                    ? 'border border-[var(--brand)] text-[var(--brand)]'
+                    : 'border border-[var(--border)] text-[var(--text-disabled)]'
+              }`}
+            >
+              {i < step ? <Icon icon="lucide:check" width={9} height={9} /> : i + 1}
+            </span>
+            <span className="hidden sm:inline">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Step content */}
+      <div ref={stepRef} key={step} className="agent-builder-step">
+        {/* ─── Step 1: Choose Persona ──────────────────────── */}
+        {step === 0 && (
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                Choose Your Agent Persona
+              </h3>
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                Pick a starting point — you can customize everything in the next step.
+              </p>
+            </div>
+            <div className={`grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+              {PERSONA_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => handleSelectPersona(preset.id)}
+                  className={`persona-card flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${
+                    selectedPersona === preset.id
+                      ? 'persona-card-selected border-[var(--brand)] bg-[color-mix(in_srgb,var(--brand)_6%,var(--bg))]'
+                      : 'border-[var(--border)] bg-[var(--bg)] hover:border-[var(--border-hover,var(--text-disabled))]'
+                  }`}
+                >
+                  <span className="text-lg leading-none mt-0.5">{preset.emoji}</span>
+                  <div className="min-w-0">
+                    <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+                      {preset.name}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-tertiary)] mt-0.5 leading-relaxed">
+                      {preset.description}
+                    </div>
+                  </div>
+                  {selectedPersona === preset.id && (
+                    <Icon
+                      icon="lucide:check-circle-2"
+                      width={14}
+                      height={14}
+                      className="text-[var(--brand)] shrink-0 mt-0.5"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Step 2: Customize Prompt ───────────────────── */}
+        {step === 1 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                  Customize Your Agent
+                </h3>
+                <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                  Edit the system prompt to shape how your agent thinks and responds.
+                </p>
+              </div>
+              {isPromptModified && (
+                <button
+                  onClick={handleResetPrompt}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
+                >
+                  <Icon icon="lucide:rotate-ccw" width={10} height={10} />
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* Split view */}
+            <div className={`flex gap-3 ${compact ? 'flex-col' : 'flex-col sm:flex-row'}`}>
+              {/* Left: Editor */}
+              <div className="flex-1 min-w-0 space-y-1">
+                <textarea
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  placeholder="Describe who your agent is and how it should behave..."
+                  className="prompt-editor w-full min-h-[200px] max-h-[320px]"
+                  spellCheck={false}
+                />
+                <div className="flex items-center justify-between text-[9px] text-[var(--text-disabled)]">
+                  <span>
+                    {isPromptModified && (
+                      <span className="text-[var(--warning,#eab308)]">Modified</span>
+                    )}
+                  </span>
+                  <span>{charCount.toLocaleString()} chars</span>
+                </div>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="w-full sm:w-[180px] shrink-0">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{selectedPreset.emoji}</span>
+                    <div>
+                      <div className="text-[11px] font-semibold text-[var(--text-primary)]">
+                        {selectedPreset.name}
+                      </div>
+                      <div className="text-[9px] text-[var(--text-disabled)]">Preview</div>
+                    </div>
+                  </div>
+
+                  {traits.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {traits.map((trait) => (
+                        <span key={trait} className="trait-badge">
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {traits.length === 0 && systemPrompt.trim().length === 0 && (
+                    <p className="text-[10px] text-[var(--text-disabled)] italic">
+                      Start typing to see traits...
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Step 3: Configure Behavior ─────────────────── */}
+        {step === 2 && (
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                Configure Behavior
+              </h3>
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                Fine-tune how your agent works alongside you.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              {BEHAVIOR_DEFS.map((b) => (
+                <button
+                  key={b.key}
+                  onClick={() => handleToggleBehavior(b.key)}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer text-left"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-medium text-[var(--text-primary)]">
+                      {b.label}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-disabled)] mt-0.5">
+                      {b.description}
+                    </div>
+                  </div>
+                  <div
+                    className="behavior-toggle"
+                    data-checked={String(behaviors[b.key] ?? b.defaultValue)}
+                    role="switch"
+                    aria-checked={behaviors[b.key] ?? b.defaultValue}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Model preference */}
+            <div className="pt-2 border-t border-[var(--border)]">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] mb-1.5">
+                Model Preference
+              </div>
+              <input
+                type="text"
+                value={modelPreference}
+                onChange={(e) => setModelPreference(e.target.value)}
+                placeholder="e.g., claude-sonnet-4-5, gpt-4o"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[12px] font-mono text-[var(--text-primary)] placeholder:text-[var(--text-disabled)] outline-none focus:border-[var(--border-focus,var(--brand))] transition-colors"
+              />
+              <p className="text-[9px] text-[var(--text-disabled)] mt-1">
+                Leave empty to use gateway default
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Step 4: Ready to Code ─────────────────────── */}
+        {step === 3 && (
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-[13px] font-semibold text-[var(--text-primary)]">
+                Ready to Code
+              </h3>
+              <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">
+                Here&apos;s your agent configuration. Activate to start using it.
+              </p>
+            </div>
+
+            {/* Summary card */}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-[var(--border)] bg-[color-mix(in_srgb,var(--brand)_4%,transparent)]">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">{selectedPreset.emoji}</span>
+                  <div>
+                    <div className="text-[13px] font-semibold text-[var(--text-primary)]">
+                      {selectedPreset.name}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-tertiary)]">
+                      {selectedPreset.description}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-4 py-3 space-y-3">
+                {/* Traits */}
+                {traits.length > 0 && (
+                  <div>
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] mb-1">
+                      Expertise
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {traits.map((trait) => (
+                        <span key={trait} className="trait-badge">
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Behaviors summary */}
+                <div>
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] mb-1">
+                    Behaviors
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {BEHAVIOR_DEFS.map((b) => {
+                      const on = behaviors[b.key] ?? b.defaultValue
+                      return (
+                        <span
+                          key={b.key}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium ${
+                            on
+                              ? 'bg-[color-mix(in_srgb,var(--success)_10%,transparent)] text-[var(--success)]'
+                              : 'bg-[var(--bg-subtle)] text-[var(--text-disabled)]'
+                          }`}
+                        >
+                          <Icon icon={on ? 'lucide:check' : 'lucide:x'} width={8} height={8} />
+                          {b.label.split('(')[0].trim()}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Model */}
+                {modelPreference && (
+                  <div>
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] mb-1">
+                      Model
+                    </div>
+                    <span className="text-[11px] font-mono text-[var(--text-secondary)]">
+                      {modelPreference}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Activate button */}
+            <button
+              onClick={handleActivate}
+              className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all cursor-pointer"
+              style={{
+                background:
+                  'linear-gradient(135deg, var(--brand), var(--brand-hover, var(--brand)))',
+                color: 'var(--brand-contrast, #fff)',
+              }}
+            >
+              Activate Agent
+            </button>
+
+            {onSkip && (
+              <button
+                onClick={onSkip}
+                className="w-full py-1.5 text-[11px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors cursor-pointer"
+              >
+                Start with default instead
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation */}
+      {step < 3 && (
+        <div className="flex items-center justify-between pt-1">
+          <button
+            onClick={() => setStep((s) => Math.max(0, s - 1))}
+            disabled={step === 0}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-medium border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => setStep((s) => Math.min(3, s + 1))}
+            disabled={!canProceed}
+            className="px-4 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            style={{
+              backgroundColor: canProceed ? 'var(--brand)' : 'var(--bg-subtle)',
+              color: canProceed ? 'var(--brand-contrast, #fff)' : 'var(--text-disabled)',
+            }}
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Configured Agent Summary (for settings panel) ──────────────
+
+interface AgentSummaryProps {
+  config: AgentConfig
+  onReconfigure: () => void
+  onReset: () => void
+}
+
+export function AgentSummary({ config, onReconfigure, onReset }: AgentSummaryProps) {
+  const preset = PERSONA_PRESETS.find((p) => p.id === config.persona) ?? PERSONA_PRESETS[0]
+  const traits = useMemo(() => extractTraits(config.systemPrompt), [config.systemPrompt])
+  const promptPreview = config.systemPrompt.split('\n').slice(0, 3).join('\n')
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="space-y-3">
+      {/* Agent card */}
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)] overflow-hidden">
+        <div className="px-3 py-2.5 flex items-center gap-2.5">
+          <span className="text-lg">{preset.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12px] font-semibold text-[var(--text-primary)]">
+              {preset.name}
+            </div>
+            <div className="text-[10px] text-[var(--text-tertiary)]">{preset.description}</div>
+          </div>
+          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-medium bg-[color-mix(in_srgb,var(--success)_10%,transparent)] text-[var(--success)]">
+            Active
+          </span>
+        </div>
+
+        {traits.length > 0 && (
+          <div className="px-3 pb-2 flex flex-wrap gap-1">
+            {traits.map((trait) => (
+              <span key={trait} className="trait-badge">
+                {trait}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* System prompt preview */}
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] mb-1">
+          System Prompt
+        </div>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full text-left px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] cursor-pointer hover:border-[var(--border-hover,var(--text-disabled))] transition-colors"
+        >
+          <pre
+            className="text-[10px] font-mono text-[var(--text-tertiary)] whitespace-pre-wrap overflow-hidden leading-relaxed"
+            style={{ maxHeight: expanded ? 'none' : '54px' }}
+          >
+            {expanded ? config.systemPrompt : promptPreview}
+          </pre>
+          <span className="text-[9px] text-[var(--text-disabled)] mt-1 flex items-center gap-1">
+            <Icon
+              icon={expanded ? 'lucide:chevron-up' : 'lucide:chevron-down'}
+              width={9}
+              height={9}
+            />
+            {expanded ? 'Collapse' : 'Expand'}
+          </span>
+        </button>
+      </div>
+
+      {/* Behaviors */}
+      <div>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-disabled)] mb-1">
+          Behaviors
+        </div>
+        <div className="space-y-0.5">
+          {BEHAVIOR_DEFS.map((b) => {
+            const on = config.behaviors[b.key] ?? b.defaultValue
+            return (
+              <div
+                key={b.key}
+                className="flex items-center justify-between px-2 py-1 rounded text-[10px]"
+              >
+                <span className="text-[var(--text-secondary)]">{b.label.split('(')[0].trim()}</span>
+                <span className={on ? 'text-[var(--success)]' : 'text-[var(--text-disabled)]'}>
+                  {on ? 'On' : 'Off'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={onReconfigure}
+          className="flex-1 py-1.5 rounded-lg text-[11px] font-medium border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-disabled)] transition-colors cursor-pointer"
+        >
+          Reconfigure Agent
+        </button>
+        <button
+          onClick={onReset}
+          className="px-3 py-1.5 rounded-lg text-[11px] font-medium text-[var(--text-disabled)] hover:text-[var(--error,#ef4444)] transition-colors cursor-pointer"
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  )
+}

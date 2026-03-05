@@ -1,4 +1,4 @@
-# Knot Code — Development & Release Guide
+# KnotCode — Development & Release Guide
 
 ## Quick Start
 
@@ -15,11 +15,11 @@
 
 ## Prerequisites
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Node.js | ≥ 20 | https://nodejs.org |
-| pnpm | latest | `npm i -g pnpm` |
-| Rust | stable | https://rustup.rs *(desktop only)* |
+| Tool    | Version | Install                            |
+| ------- | ------- | ---------------------------------- |
+| Node.js | ≥ 20    | https://nodejs.org                 |
+| pnpm    | latest  | `npm i -g pnpm`                    |
+| Rust    | stable  | https://rustup.rs _(desktop only)_ |
 
 ## Project Structure
 
@@ -101,10 +101,10 @@ Launches a native macOS window with the web app inside. Both the web frontend an
 
 Copy `.env.example` → `.env` and fill in:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_GITHUB_CLIENT_ID` | Optional | GitHub OAuth App Client ID for device-flow login. Create at [github.com/settings/developers](https://github.com/settings/developers). Without this, users can still paste a PAT manually in Settings. |
-| `NEXT_PUBLIC_SPOTIFY_CLIENT_ID` | Optional | Spotify PKCE OAuth Client ID for the music plugin. Create at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard). |
+| Variable                        | Required | Description                                                                                                                                                                                           |
+| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_GITHUB_CLIENT_ID`  | Optional | GitHub OAuth App Client ID for device-flow login. Create at [github.com/settings/developers](https://github.com/settings/developers). Without this, users can still paste a PAT manually in Settings. |
+| `NEXT_PUBLIC_SPOTIFY_CLIENT_ID` | Optional | Spotify PKCE OAuth Client ID for the music plugin. Create at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard).                                                              |
 
 > **Note:** These are `NEXT_PUBLIC_` variables — they're embedded in the client bundle. Only put client IDs here, never secrets.
 
@@ -156,6 +156,7 @@ The DMG is output to `src-tauri/target/.../bundle/dmg/`.
 ```
 
 Checks:
+
 - ✅ Clean git working tree
 - ✅ Lock file in sync
 - ✅ Zero TypeScript errors
@@ -175,6 +176,7 @@ Checks:
 ```
 
 This:
+
 1. Runs all verification checks
 2. Bumps version in `package.json` + `src-tauri/tauri.conf.json`
 3. Commits: `chore: release v1.0.0`
@@ -184,6 +186,7 @@ This:
 ### 3. CI builds the DMG
 
 The `release.yml` workflow:
+
 1. Builds a universal macOS DMG (arm64 + x86_64)
 2. Code-signs with Apple Developer certificate (if secrets are configured)
 3. Notarizes with Apple (if secrets are configured)
@@ -199,19 +202,19 @@ The `release.yml` workflow:
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `⌘B` | Toggle file explorer |
-| `⌘J` | Toggle terminal |
-| `⌘\` | Toggle sidebar |
-| `⌘P` | Quick open file |
-| `⌘⇧I` | Isolate component (preview) |
-| `⌘K` | Inline edit |
-| `⌘L` | Send selection to chat |
-| `⌘S` | Save file |
-| `⌘⇧F` | Global search |
-| `⌘⇧P` | Command palette |
-| `Esc` | Close overlays |
+| Shortcut | Action                      |
+| -------- | --------------------------- |
+| `⌘B`     | Toggle file explorer        |
+| `⌘J`     | Toggle terminal             |
+| `⌘\`     | Toggle sidebar              |
+| `⌘P`     | Quick open file             |
+| `⌘⇧I`    | Isolate component (preview) |
+| `⌘K`     | Inline edit                 |
+| `⌘L`     | Send selection to chat      |
+| `⌘S`     | Save file                   |
+| `⌘⇧F`    | Global search               |
+| `⌘⇧P`    | Command palette             |
+| `Esc`    | Close overlays              |
 
 ---
 
@@ -222,10 +225,12 @@ The `release.yml` workflow:
 `Obsidian` · `Neon` · `Catppuccin` · `Bone` · `Caffeine` · `Claymorphism` · `Vercel` · `Vintage Paper` · `VooDoo` · `CyberNord`
 
 Themes are defined in:
+
 - `context/theme-context.tsx` — preset registry
 - `app/globals.css` — CSS custom properties per theme
 
 To add a new theme:
+
 1. Add entry to `THEME_PRESETS` in `theme-context.tsx`
 2. Add `.dark[data-theme="your-theme"]` + `[data-theme="your-theme"]:not(.dark)` blocks in `globals.css`
 3. Add semantic tokens block

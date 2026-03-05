@@ -1500,6 +1500,149 @@ p {
 }
 
 /* ──────────────────────────────────────────────────────────────────
+   Agent Builder — Persona Cards, Steps, Prompt Editor, Badges
+   ────────────────────────────────────────────────────────────────── */
+
+/* Persona card — hover lift + brand glow border + scale */
+.persona-card {
+  position: relative;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+  cursor: pointer;
+}
+.persona-card:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 4px 16px -4px color-mix(in srgb, var(--brand) 20%, rgba(0, 0, 0, 0.2)),
+    0 0 0 1px color-mix(in srgb, var(--brand) 25%, transparent);
+}
+.persona-card.persona-card-selected {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 1px var(--brand),
+    0 0 20px -4px color-mix(in srgb, var(--brand) 15%, transparent);
+}
+
+/* Step transition — slide in */
+.agent-builder-step {
+  animation: agent-step-in 0.25s ease-out both;
+}
+@keyframes agent-step-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Prompt editor — monospace with line numbers feel */
+.prompt-editor {
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  tab-size: 2;
+  resize: none;
+  background: var(--bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px 12px 42px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 19.8px,
+    color-mix(in srgb, var(--border) 30%, transparent) 19.8px,
+    color-mix(in srgb, var(--border) 30%, transparent) 20px
+  );
+}
+.prompt-editor:focus {
+  border-color: var(--border-focus, var(--brand));
+}
+.prompt-editor::placeholder {
+  color: var(--text-disabled);
+}
+
+/* Trait badge — small rounded pill */
+.trait-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 20%, transparent);
+  white-space: nowrap;
+  animation: badge-pop 0.2s ease-out both;
+}
+
+/* Behavior toggle — clean switch */
+.behavior-toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 100px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.behavior-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+.behavior-toggle[data-checked='true'] {
+  background-color: var(--brand);
+}
+.behavior-toggle[data-checked='true']::after {
+  transform: translateX(14px);
+}
+.behavior-toggle[data-checked='false'] {
+  background-color: var(--bg-tertiary);
+}
+
+/* Agent banner in chat home */
+.agent-banner {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.agent-banner:hover {
+  background-color: color-mix(in srgb, var(--brand) 6%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--border));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .persona-card:hover {
+    transform: none;
+  }
+  .agent-builder-step {
+    animation: none;
+  }
+  .trait-badge {
+    animation: none;
+  }
+  .behavior-toggle::after {
+    transition: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
    Inline Diff Decorations (Cursor-style)
    ────────────────────────────────────────────────────────────────── */
 .inline-diff-added {
@@ -1967,6 +2110,88 @@ p {
 
 .animate-badge-pop {
   animation: badge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Knot Background — Welcome screen ambient layers
+   ────────────────────────────────────────────────────────────────── */
+
+.knot-bg-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.knot-bg-pattern {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.045;
+}
+
+:root:not(.dark) .knot-bg-pattern {
+  opacity: 0.03;
+}
+
+.knot-bg-float {
+  position: absolute;
+  filter: blur(70px);
+  opacity: 0.09;
+  will-change: transform;
+  animation: knot-drift ease-in-out infinite;
+}
+
+:root:not(.dark) .knot-bg-float {
+  opacity: 0.06;
+  filter: blur(55px);
+}
+
+.knot-bg-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 80% 75%,
+      color-mix(in srgb, var(--mode-accent, var(--brand)) 8%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 20% 20%,
+      color-mix(in srgb, var(--brand) 5%, transparent),
+      transparent 60%
+    );
+}
+
+:root:not(.dark) .knot-bg-glow {
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 80% 75%,
+      color-mix(in srgb, var(--mode-accent, var(--brand)) 5%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 20% 20%,
+      color-mix(in srgb, var(--brand) 3%, transparent),
+      transparent 60%
+    );
+}
+
+@keyframes knot-drift {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(5%, -4%) rotate(6deg) scale(1.05);
+  }
+  66% {
+    transform: translate(-3%, 4%) rotate(-5deg) scale(0.96);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────

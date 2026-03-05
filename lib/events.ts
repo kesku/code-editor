@@ -12,6 +12,7 @@ export interface AppEvents {
   'open-folder': void
   'open-recent': { path: string }
   'open-settings': void
+  'open-agent-settings': void
   'open-onboarding': void
   'open-git-panel': void
   'open-changes-panel': void

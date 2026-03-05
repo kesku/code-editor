@@ -90,7 +90,7 @@ export function WorkspaceSidebar({ collapsed, onToggle, repoName }: Props) {
                 className="text-[var(--brand)] shrink-0"
               />
               <span className="text-[14px] font-semibold text-[var(--text-primary)] truncate">
-                {repoName || 'Knot Code'}
+                {repoName || 'KnotCode'}
               </span>
             </div>
             <button

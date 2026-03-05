@@ -12,7 +12,7 @@ describe('constants', () => {
 
   it('exports a system prompt', () => {
     expect(CODE_EDITOR_SYSTEM_PROMPT.length).toBeGreaterThan(100)
-    expect(CODE_EDITOR_SYSTEM_PROMPT).toContain('Knot Code Agent')
+    expect(CODE_EDITOR_SYSTEM_PROMPT).toContain('KnotCode Agent')
   })
 })
 

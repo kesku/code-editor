@@ -1,4 +1,4 @@
-# AGENTS.md — Knot Code Editor
+# AGENTS.md — KnotCode Editor
 
 ## Project
 

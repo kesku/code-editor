@@ -44,6 +44,7 @@ export const MODE_REGISTRY: Record<AppMode, ModeSpec> = {
     description: 'Chat-first mode with optional editor and git views',
     visibleViews: ['chat', 'editor', 'git'],
     defaultView: 'chat',
+    hideTabs: true,
     accent: '#60a5fa',
     panelDefaults: {
       sidebar: false,

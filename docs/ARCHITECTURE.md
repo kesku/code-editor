@@ -2,7 +2,7 @@
 
 ## Overview
 
-Knot Code is a **dual-target application** — it runs as a web app on Vercel and as a native macOS desktop app via Tauri. Both targets share the same Next.js codebase.
+KnotCode is a **dual-target application** — it runs as a web app on Vercel and as a native macOS desktop app via Tauri. Both targets share the same Next.js codebase.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -173,6 +173,7 @@ User types /commit in agent panel
 ### GatewayContext
 
 Manages WebSocket connection to the OpenClaw gateway:
+
 - `connect(url, password)` → WebSocket + challenge/response auth
 - `sendRequest(method, params)` → JSON-RPC over WebSocket
 - `onEvent(event, callback)` → subscribe to gateway events
@@ -182,6 +183,7 @@ Manages WebSocket connection to the OpenClaw gateway:
 ### RepoContext
 
 Manages current repository state:
+
 - `repo` → `{ owner, repo, branch, fullName }`
 - `tree` → flat array of `TreeNode` (path, type, sha)
 - `loadTree()` → fetches recursive tree from GitHub API
@@ -190,6 +192,7 @@ Manages current repository state:
 ### EditorContext
 
 Manages open files and editor state:
+
 - `files` → array of `{ path, content, language, sha, dirty }`
 - `activeFile` → currently focused file path
 - `openFile() / closeFile() / updateFileContent()`
@@ -200,11 +203,11 @@ Manages open files and editor state:
 
 Three dedicated agent sessions prevent message cross-talk:
 
-| Session Key | Purpose |
-|---|---|
-| `agent:main` | Nova (personal assistant via Telegram) |
-| `agent:main:codeflow` | CodeFlow PR maintainer |
-| `agent:main:code-editor` | Knot Code coding agent |
+| Session Key              | Purpose                                |
+| ------------------------ | -------------------------------------- |
+| `agent:main`             | Nova (personal assistant via Telegram) |
+| `agent:main:codeflow`    | CodeFlow PR maintainer                 |
+| `agent:main:code-editor` | KnotCode coding agent                  |
 
 Each session has its own system prompt injected via `chat.inject` on first connect.
 
@@ -233,12 +236,12 @@ Each session has its own system prompt injected via `chat.inject` on first conne
 
 Four themes defined in `globals.css` via CSS custom properties:
 
-| Theme | Brand Color | Vibe |
-|---|---|---|
-| Obsidian | `#ca3a29` (red) | Dark, professional |
-| Neon | `#a855f7` (purple) | Deep black + neon |
-| Catppuccin Mocha | `#cba6f7` (lavender) | Warm pastel dark |
-| Bone | `#78716c` (stone) | Light, minimal |
+| Theme            | Brand Color          | Vibe               |
+| ---------------- | -------------------- | ------------------ |
+| Obsidian         | `#ca3a29` (red)      | Dark, professional |
+| Neon             | `#a855f7` (purple)   | Deep black + neon  |
+| Catppuccin Mocha | `#cba6f7` (lavender) | Warm pastel dark   |
+| Bone             | `#78716c` (stone)    | Light, minimal     |
 
 Monaco editor reads these variables at mount time via `registerEditorTheme()` to match the active theme.
 

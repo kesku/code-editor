@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Knot Code",
+  "productName": "KnotCode",
   "version": "1.0.0",
   "identifier": "ai.openknot.code-editor",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Knot Code",
+        "title": "KnotCode",
         "width": 1440,
         "height": 900,
         "resizable": true,

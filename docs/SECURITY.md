@@ -1,6 +1,6 @@
 # Security Runbook
 
-This document defines how Knot Code handles secrets, responds to leaks, and manages git author privacy.
+This document defines how KnotCode handles secrets, responds to leaks, and manages git author privacy.
 
 ## Secret Handling Policy
 

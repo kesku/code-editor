@@ -216,9 +216,11 @@ function WelcomeView() {
           </div>
           <div>
             <h1 className="text-[15px] font-semibold text-[var(--text-primary)] tracking-tight">
-              Knot Code
+              KnotCode
             </h1>
-            <p className="text-[11px] text-[var(--text-tertiary)]">AI-powered code editor</p>
+            <p className="text-[11px] text-[var(--text-tertiary)]">
+              AI-powered code editor by OpenKnots
+            </p>
           </div>
         </div>
 

@@ -1,4 +1,4 @@
-# Knot Code Desktop Workflow
+# KnotCode Desktop Workflow
 
 This project is now **desktop-first** (Tauri).
 

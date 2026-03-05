@@ -34,6 +34,7 @@ import {
   CODE_EDITOR_SYSTEM_PROMPT_VERSION,
   CODE_EDITOR_SYSTEM_PROMPT,
   buildEditorContext,
+  getEffectiveSystemPrompt,
 } from '@/lib/agent-session'
 
 // ChatMessage type imported from @/lib/chat-stream
@@ -318,10 +319,11 @@ export function AgentPanel() {
     }
 
     try {
+      const effectivePrompt = getEffectiveSystemPrompt()
       await sendRequest('chat.inject', {
         sessionKey,
-        message: CODE_EDITOR_SYSTEM_PROMPT,
-        label: 'Knot Code system prompt',
+        message: effectivePrompt,
+        label: 'KnotCode system prompt',
       })
       sessionInitRef.current = true
       if (typeof window !== 'undefined') {
@@ -330,7 +332,7 @@ export function AgentPanel() {
       // Label the session only after init succeeds
       sendRequest('sessions.patch', {
         key: sessionKey,
-        label: 'Knot Code',
+        label: 'KnotCode',
       }).catch(() => {})
     } catch {
       // Non-fatal — session still works without explicit system prompt
@@ -1600,7 +1602,7 @@ export function AgentPanel() {
       <div className="shrink-0 flex items-center justify-center gap-1.5 px-3 py-1 border-t border-[var(--border)] bg-[var(--bg-elevated)]">
         <KnotLogo size={10} className="opacity-40" />
         <span className="text-[9px] text-[var(--text-disabled)] font-medium tracking-wide">
-          Knot Code
+          KnotCode
         </span>
         <span className="text-[8px] text-[var(--text-disabled)] opacity-50">v1.0.0</span>
       </div>

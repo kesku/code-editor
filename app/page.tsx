@@ -28,6 +28,7 @@ import { StatusBar } from '@/components/status-bar'
 import { useKeyboardShortcuts } from '@/components/keyboard-handler'
 import { SidebarPluginSlot } from '@/components/sidebar-plugin-slot'
 import { emit, on } from '@/lib/events'
+import { KnotLogo } from '@/components/knot-logo'
 import type { AppMode } from '@/lib/mode-registry'
 
 // Overlay modals — lazy loaded
@@ -136,6 +137,9 @@ export default function EditorLayout() {
   const [commandPaletteVisible, setCommandPaletteVisible] = useState(false)
   const [shortcutsVisible, setShortcutsVisible] = useState(false)
   const [settingsVisible, setSettingsVisible] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<
+    'general' | 'editor' | 'agent' | 'keybindings' | 'plugins' | undefined
+  >(undefined)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
 
   const dirtyCount = useMemo(() => files.filter((f) => f.dirty).length, [files])
@@ -260,7 +264,14 @@ export default function EditorLayout() {
   // ─── Event listeners ───────────────────────────────────
   useEffect(() => {
     const unsubs = [
-      on('open-settings', () => setSettingsVisible(true)),
+      on('open-settings', () => {
+        setSettingsTab(undefined)
+        setSettingsVisible(true)
+      }),
+      on('open-agent-settings', () => {
+        setSettingsTab('agent')
+        setSettingsVisible(true)
+      }),
       on('open-folder', () => localOpenFolder()),
       on('open-recent', (detail) => {
         if (detail.path) localSetRootPath(detail.path)
@@ -476,15 +487,20 @@ export default function EditorLayout() {
             </div>
           )}
 
-          {/* TUI mode: minimal header label */}
+          {/* Minimal header with brand when tabs are hidden */}
           {modeSpec.hideTabs && (
             <div className="flex items-center gap-2 tauri-no-drag">
-              <Icon icon="lucide:terminal" width={16} height={16} className="text-[var(--brand)]" />
-              <span className="text-[12px] font-medium text-[var(--text-secondary)]">Terminal</span>
+              <KnotLogo size={18} className="text-[var(--brand)]" />
+              <span className="text-[12px] font-semibold text-[var(--text-primary)] tracking-[-0.01em]">
+                KnotCode
+              </span>
               {localRootPath && (
-                <span className="text-[11px] font-mono text-[var(--text-disabled)] ml-1 truncate max-w-[200px]">
-                  {localRootPath.split('/').pop()}
-                </span>
+                <>
+                  <span className="text-[var(--text-disabled)]">&middot;</span>
+                  <span className="text-[11px] font-mono text-[var(--text-disabled)] truncate max-w-[200px]">
+                    {localRootPath.split('/').pop()}
+                  </span>
+                </>
               )}
             </div>
           )}
@@ -777,7 +793,14 @@ export default function EditorLayout() {
       />
       <ShortcutsOverlay open={shortcutsVisible} onClose={() => setShortcutsVisible(false)} />
       {settingsVisible && activeView !== 'settings' && (
-        <SettingsPanel open={settingsVisible} onClose={() => setSettingsVisible(false)} />
+        <SettingsPanel
+          open={settingsVisible}
+          onClose={() => {
+            setSettingsVisible(false)
+            setSettingsTab(undefined)
+          }}
+          initialTab={settingsTab}
+        />
       )}
       <OnboardingTour open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />
     </div>

@@ -149,7 +149,7 @@ export function StatusBar({ agentActive }: StatusBarProps) {
             }`}
           />
         </span>
-        <span className="text-[var(--text-disabled)] font-medium">Knot Code</span>
+        <span className="text-[var(--text-disabled)] font-medium">KnotCode</span>
         <ActivityPulseRing status={status} agentActive={agentActive} />
       </div>
     </footer>

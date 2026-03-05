@@ -125,7 +125,7 @@ export function SpotifyPlayer() {
   useEffect(() => {
     if (!sdkReady || !authenticated) return
     const player = new window.Spotify.Player({
-      name: 'Knot Code',
+      name: 'KnotCode',
       getOAuthToken: async (cb: (t: string) => void) => {
         const token = await ensureSpotifyToken()
         if (token) cb(token)
@@ -588,7 +588,7 @@ export function SpotifyPlayer() {
           {/* Footer */}
           <div className="flex items-center h-6 px-2.5 border-t border-[var(--border)] shrink-0">
             <span className="text-[8px] text-[var(--text-disabled)]">
-              {deviceId ? 'Knot Code' : 'Connecting…'}
+              {deviceId ? 'KnotCode' : 'Connecting…'}
             </span>
             <div className="flex-1" />
             <button

@@ -1,4 +1,4 @@
-# Contributing to Knot Code
+# Contributing to KnotCode
 
 Thanks for your interest in contributing! This guide will get you up and running.
 

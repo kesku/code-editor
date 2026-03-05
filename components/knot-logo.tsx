@@ -8,43 +8,86 @@ interface KnotLogoProps {
   color?: string
 }
 
+/**
+ * Celtic-style interwoven knot with 6 radiating loops.
+ * Inspired by the OpenKnots brand mark — each loop weaves
+ * over-and-under its neighbours via stroke masks.
+ */
 export function KnotLogo({ size = 24, className, color }: KnotLogoProps) {
-  const id = useId()
+  const uid = useId()
   const c = color || 'currentColor'
-  const sw = 5.5
-  const maskId = `knot-mask-${id}`
+  const id = uid.replace(/:/g, '')
+
+  const R = 50
+  const cx = 50
+  const cy = 50
+  const loopR = 22
+  const sw = 5.8
+
+  const angles = [0, 60, 120, 180, 240, 300]
+
+  const petalPaths = angles.map((deg) => {
+    const rad = (deg * Math.PI) / 180
+    const px = cx + R * 0.42 * Math.cos(rad)
+    const py = cy + R * 0.42 * Math.sin(rad)
+
+    const tangent = rad + Math.PI / 2
+    const cp1x = px + loopR * 1.1 * Math.cos(tangent)
+    const cp1y = py + loopR * 1.1 * Math.sin(tangent)
+    const cp2x = px - loopR * 1.1 * Math.cos(tangent)
+    const cp2y = py - loopR * 1.1 * Math.sin(tangent)
+
+    const tipDist = loopR * 1.55
+    const tipX = cx + (R * 0.42 + tipDist) * Math.cos(rad)
+    const tipY = cy + (R * 0.42 + tipDist) * Math.sin(rad)
+
+    const inTan1 = rad + 0.65
+    const inTan2 = rad - 0.65
+    const cpInnerR = loopR * 1.4
+
+    return `M ${cx.toFixed(1)} ${cy.toFixed(1)} C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${(tipX + cpInnerR * Math.cos(inTan1)).toFixed(1)} ${(tipY + cpInnerR * Math.sin(inTan1)).toFixed(1)}, ${tipX.toFixed(1)} ${tipY.toFixed(1)} C ${(tipX + cpInnerR * Math.cos(inTan2)).toFixed(1)} ${(tipY + cpInnerR * Math.sin(inTan2)).toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${cx.toFixed(1)} ${cy.toFixed(1)}`
+  })
 
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="Knot Code"
+      aria-label="KnotCode"
       role="img"
     >
       <defs>
-        <mask id={maskId}>
-          <rect width="64" height="64" fill="white" />
-          <line x1="19" y1="21" x2="45" y2="43" stroke="black" strokeWidth={sw + 6} strokeLinecap="round" />
-        </mask>
+        {petalPaths.map((_, i) => {
+          const nextIdx = (i + 1) % 6
+          const nextDeg = angles[nextIdx]
+          const nextRad = (nextDeg * Math.PI) / 180
+          const mskX = cx + R * 0.32 * Math.cos(nextRad)
+          const mskY = cy + R * 0.32 * Math.sin(nextRad)
+          return (
+            <mask key={`m${i}`} id={`${id}m${i}`}>
+              <rect width="100" height="100" fill="white" />
+              <circle cx={mskX} cy={mskY} r={sw + 3} fill="black" />
+            </mask>
+          )
+        })}
       </defs>
 
-      <g stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" fill="none">
-        {/* Loop A: top-left ↔ bottom-right (OVER at center crossing) */}
-        <path d="M18 8 C7 8, 4 22, 15 27 C26 32, 32 22, 25 14 C18 6, 7 12, 18 22" />
-        <path d="M46 56 C57 56, 60 42, 49 37 C38 32, 32 42, 39 50 C46 58, 57 52, 46 42" />
-        <path d="M18 22 L46 42" />
-
-        {/* Loop B: top-right ↔ bottom-left (UNDER — masked at crossing) */}
-        <g mask={`url(#${maskId})`}>
-          <path d="M46 8 C57 8, 60 22, 49 27 C38 32, 32 22, 39 14 C46 6, 57 12, 46 22" />
-          <path d="M18 56 C7 56, 4 42, 15 37 C26 32, 32 42, 25 50 C18 58, 7 52, 18 42" />
-          <path d="M46 22 L18 42" />
-        </g>
-      </g>
+      {petalPaths.map((d, i) => (
+        <path
+          key={i}
+          d={d}
+          stroke={c}
+          strokeWidth={sw}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          mask={`url(#${id}m${i})`}
+          opacity={i % 2 === 0 ? 1 : 0.7}
+        />
+      ))}
     </svg>
   )
 }

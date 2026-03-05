@@ -6,16 +6,19 @@ import { emit } from '@/lib/events'
 import { useTheme, THEME_PRESETS, RADIUS_PRESETS } from '@/context/theme-context'
 import { usePlugins } from '@/context/plugin-context'
 import { useGitHubAuth } from '@/context/github-auth-context'
+import { AgentBuilder, AgentSummary } from '@/components/agent-builder'
+import { type AgentConfig, getAgentConfig, clearAgentConfig } from '@/lib/agent-session'
 
 interface Props {
   open: boolean
   onClose: () => void
+  initialTab?: SettingsTab
 }
 
 type SettingsTab = 'general' | 'editor' | 'agent' | 'keybindings' | 'plugins'
 const TOKEN_REVEAL_TIMEOUT_MS = 15000
 
-export function SettingsPanel({ open, onClose }: Props) {
+export function SettingsPanel({ open, onClose, initialTab }: Props) {
   const { themeId, setThemeId, mode, setMode, borderRadius, setBorderRadius, bgTint, setBgTint } =
     useTheme()
   const { slots } = usePlugins()
@@ -35,12 +38,25 @@ export function SettingsPanel({ open, onClose }: Props) {
   const [ghTokenRevealed, setGhTokenRevealed] = useState(false)
   const [ghTokenCopied, setGhTokenCopied] = useState(false)
   const [showGhTokenInput, setShowGhTokenInput] = useState(false)
-  const [tab, setTab] = useState<SettingsTab>('general')
+  const [tab, setTab] = useState<SettingsTab>(initialTab ?? 'general')
+  const [agentConfig, setAgentConfig] = useState<AgentConfig | null>(() => getAgentConfig())
+  const [agentBuilderMode, setAgentBuilderMode] = useState(false)
   const [fontSize, setFontSize] = useState(13)
   const [tabSize, setTabSize] = useState(2)
   const [wordWrap, setWordWrap] = useState(false)
   const [minimap, setMinimap] = useState(false)
   const [autoSave, setAutoSave] = useState(true)
+
+  // Sync initialTab when panel re-opens
+  useEffect(() => {
+    if (open && initialTab) {
+      setTab(initialTab)
+    }
+    if (open) {
+      setAgentConfig(getAgentConfig())
+      setAgentBuilderMode(false)
+    }
+  }, [open, initialTab])
 
   // Load settings
   useEffect(() => {
@@ -569,23 +585,29 @@ export function SettingsPanel({ open, onClose }: Props) {
             </>
           )}
 
-          {tab === 'agent' && (
-            <div className="text-center py-8">
-              <Icon
-                icon="lucide:bot"
-                width={28}
-                height={28}
-                className="mx-auto mb-2 text-[var(--text-disabled)]"
+          {tab === 'agent' &&
+            (agentConfig && !agentBuilderMode ? (
+              <AgentSummary
+                config={agentConfig}
+                onReconfigure={() => setAgentBuilderMode(true)}
+                onReset={() => {
+                  clearAgentConfig()
+                  setAgentConfig(null)
+                  setAgentBuilderMode(false)
+                }}
               />
-              <p className="text-[11px] text-[var(--text-tertiary)]">
-                Agent settings configured via gateway
-              </p>
-              <p className="text-[10px] text-[var(--text-disabled)] mt-1">
-                Model, system prompt, and context are managed through the OpenClaw gateway
-                connection
-              </p>
-            </div>
-          )}
+            ) : (
+              <AgentBuilder
+                compact
+                onComplete={(config) => {
+                  setAgentConfig(config)
+                  setAgentBuilderMode(false)
+                }}
+                onSkip={() => {
+                  setTab('general')
+                }}
+              />
+            ))}
 
           {tab === 'keybindings' && (
             <div className="space-y-0.5">

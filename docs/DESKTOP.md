@@ -2,7 +2,7 @@
 
 ## Overview
 
-Knot Code ships as a native macOS desktop application via [Tauri v2](https://v2.tauri.app). Tauri wraps the system's native WebView (WebKit on macOS) instead of bundling Chromium, resulting in a ~10MB binary vs ~150MB for Electron.
+KnotCode ships as a native macOS desktop application via [Tauri v2](https://v2.tauri.app). Tauri wraps the system's native WebView (WebKit on macOS) instead of bundling Chromium, resulting in a ~10MB binary vs ~150MB for Electron.
 
 ## Architecture
 
@@ -82,6 +82,7 @@ pnpm tauri:build
 ```
 
 Output location:
+
 ```
 src-tauri/target/release/bundle/
 ├── macos/
@@ -100,20 +101,22 @@ src-tauri/target/release/bundle/
   "version": "0.1.0",
   "identifier": "ai.openknot.code-editor",
   "build": {
-    "frontendDist": "../out",           // Static export directory
-    "devUrl": "http://localhost:3080",   // Dev server URL
-    "beforeDevCommand": "pnpm dev",     // Start Next.js dev
-    "beforeBuildCommand": "pnpm build:static"  // Build static export
+    "frontendDist": "../out", // Static export directory
+    "devUrl": "http://localhost:3080", // Dev server URL
+    "beforeDevCommand": "pnpm dev", // Start Next.js dev
+    "beforeBuildCommand": "pnpm build:static" // Build static export
   },
   "app": {
-    "windows": [{
-      "title": "Knot Code",
-      "width": 1440,
-      "height": 900,
-      "minWidth": 800,
-      "minHeight": 600,
-      "titleBarStyle": "Overlay"        // macOS native titlebar
-    }]
+    "windows": [
+      {
+        "title": "Knot Code",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 800,
+        "minHeight": 600,
+        "titleBarStyle": "Overlay" // macOS native titlebar
+      }
+    ]
   }
 }
 ```
@@ -135,26 +138,26 @@ const nextConfig = {
 
 ## How It Differs from Web
 
-| Aspect | Web (Vercel) | Desktop (Tauri) |
-|--------|-------------|-----------------|
-| Rendering | Server + Client | Client only (static) |
-| API Routes | Server-side proxy | Direct GitHub API calls |
-| Auth | WorkOS + gateway password | Gateway password only |
-| File System | None | Native access (future) |
-| Updates | Instant (redeploy) | Manual / auto-updater |
-| Offline | No | Partial (cached files) |
+| Aspect      | Web (Vercel)              | Desktop (Tauri)         |
+| ----------- | ------------------------- | ----------------------- |
+| Rendering   | Server + Client           | Client only (static)    |
+| API Routes  | Server-side proxy         | Direct GitHub API calls |
+| Auth        | WorkOS + gateway password | Gateway password only   |
+| File System | None                      | Native access (future)  |
+| Updates     | Instant (redeploy)        | Manual / auto-updater   |
+| Offline     | No                        | Partial (cached files)  |
 
 ## Tauri vs Electron
 
-| | Tauri v2 | Electron |
-|---|---|---|
-| Binary size | ~10MB | ~150MB |
-| Runtime | System WebKit | Bundled Chromium |
-| Memory | ~50MB | ~200MB+ |
-| Backend | Rust | Node.js |
-| macOS feel | Native | Chrome-like |
-| Build time | 2-5 min (first) | ~1 min |
-| Permissions | Capability-based | Open by default |
+|             | Tauri v2         | Electron         |
+| ----------- | ---------------- | ---------------- |
+| Binary size | ~10MB            | ~150MB           |
+| Runtime     | System WebKit    | Bundled Chromium |
+| Memory      | ~50MB            | ~200MB+          |
+| Backend     | Rust             | Node.js          |
+| macOS feel  | Native           | Chrome-like      |
+| Build time  | 2-5 min (first)  | ~1 min           |
+| Permissions | Capability-based | Open by default  |
 
 ## File Structure
 

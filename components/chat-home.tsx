@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react'
 import { Icon } from '@iconify/react'
 import { KnotLogo } from '@/components/knot-logo'
+import { KnotBackground } from '@/components/knot-background'
 import { ModeSelector } from '@/components/mode-selector'
 import type { AgentMode } from '@/components/mode-selector'
 import { useRepo } from '@/context/repo-context'
@@ -10,7 +11,9 @@ import { useLocal } from '@/context/local-context'
 import { useGateway } from '@/context/gateway-context'
 import { useGitHubAuth } from '@/context/github-auth-context'
 import { useEditor } from '@/context/editor-context'
+import { emit } from '@/lib/events'
 import { getRecentFolders } from '@/context/local-context'
+import { getAgentConfig } from '@/lib/agent-session'
 
 const STATIC_SUGGESTIONS = [
   { icon: 'lucide:sparkles', label: 'Edit this', prefix: 'Edit ', desc: 'Modify selected code' },
@@ -142,6 +145,7 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
 
   const [recentFolders, setRecentFolders] = useState<string[]>(() => getRecentFolders())
   const [recentConversations, setRecentConversations] = useState(() => getRecentConversations())
+  const agentConfig = useMemo(() => getAgentConfig(), [])
 
   useEffect(() => {
     setRecentFolders(getRecentFolders())
@@ -292,21 +296,27 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
   }, [hasWorkspace, openFiles, local.localTree])
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-8 sm:py-10">
-      <div className="min-h-full w-full max-w-[700px] mx-auto flex flex-col justify-center">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-8 sm:py-10 relative">
+      <KnotBackground />
+      <div className="min-h-full w-full max-w-[700px] mx-auto flex flex-col justify-center relative z-[1]">
         {/* Logo + Heading */}
         <div className="flex flex-col items-center mb-5">
           <div
-            className={`mb-2.5 text-[var(--text-tertiary)] ${
+            className={`mb-3 text-[var(--text-tertiary)] ${
               status === 'connected' ? 'logo-breathe-connected' : 'logo-breathe-idle'
             }`}
           >
-            <KnotLogo size={30} />
+            <KnotLogo size={42} />
           </div>
-          <h1 className="text-center text-[18px] font-semibold text-[var(--text-primary)] tracking-[-0.01em] leading-tight">
-            {repoShort ? `What should we work on?` : `What do you want to build?`}
+          <h1 className="text-center text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.02em] leading-tight flex items-center gap-2 justify-center">
+            <span className="bg-gradient-to-r from-[var(--text-primary)] to-[var(--text-secondary)] bg-clip-text text-transparent">
+              KnotCode
+            </span>
           </h1>
-          <p className="mt-2 text-center text-[12px] leading-relaxed text-[var(--text-disabled)] max-w-[520px]">
+          <p className="mt-1.5 text-center text-[13px] text-[var(--text-secondary)] font-medium">
+            {repoShort ? `What should we work on?` : `What do you want to build?`}
+          </p>
+          <p className="mt-1.5 text-center text-[12px] leading-relaxed text-[var(--text-disabled)] max-w-[520px]">
             {hasWorkspace
               ? 'Move from idea to merged code with focused prompts, fast edits, and built-in review workflows.'
               : 'Open a project or describe your idea to start coding with a context-aware agent.'}
@@ -347,7 +357,7 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
               </button>
             ) : (
               <span className="text-[11px] text-[var(--text-disabled)]">
-                AI-powered code editor
+                KnotCode — AI-powered editor
               </span>
             )}
             <span
@@ -360,6 +370,35 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
               />
               {status === 'connected' ? 'Gateway connected' : 'Gateway offline'}
             </span>
+            {agentConfig && (
+              <button
+                onClick={() => emit('open-agent-settings')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[color-mix(in_srgb,var(--brand)_20%,var(--border))] bg-[color-mix(in_srgb,var(--brand)_6%,transparent)] text-[var(--brand)] hover:bg-[color-mix(in_srgb,var(--brand)_10%,transparent)] transition-colors cursor-pointer"
+              >
+                <span className="text-[10px]">
+                  {agentConfig.persona === 'fullstack'
+                    ? '\u{1F525}'
+                    : agentConfig.persona === 'frontend'
+                      ? '\u{1F3AF}'
+                      : agentConfig.persona === 'security'
+                        ? '\u{1F6E1}\u{FE0F}'
+                        : agentConfig.persona === 'architect'
+                          ? '\u{1F3D7}\u{FE0F}'
+                          : '\u{2728}'}
+                </span>
+                <span className="text-[10px] font-medium">
+                  {agentConfig.persona === 'fullstack'
+                    ? 'Full-Stack Engineer'
+                    : agentConfig.persona === 'frontend'
+                      ? 'Frontend Specialist'
+                      : agentConfig.persona === 'security'
+                        ? 'Security Engineer'
+                        : agentConfig.persona === 'architect'
+                          ? 'Systems Architect'
+                          : 'Custom Agent'}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -720,6 +759,35 @@ export const ChatHome = memo(function ChatHome({ onSend, onSelectFolder, onClone
                 </div>
               )}
             </div>
+
+            {/* Agent customization banner */}
+            {!agentConfig && (
+              <button
+                onClick={() => emit('open-agent-settings')}
+                className="agent-banner w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-[var(--border)] text-left cursor-pointer"
+              >
+                <Icon
+                  icon="lucide:sparkles"
+                  width={14}
+                  height={14}
+                  className="text-[var(--brand)] shrink-0"
+                />
+                <div className="min-w-0">
+                  <span className="block text-[12px] font-medium text-[var(--text-secondary)]">
+                    Customize your AI agent
+                  </span>
+                  <span className="block text-[10px] text-[var(--text-disabled)]">
+                    Set up persona and behavior
+                  </span>
+                </div>
+                <Icon
+                  icon="lucide:chevron-right"
+                  width={12}
+                  height={12}
+                  className="text-[var(--text-disabled)] shrink-0 ml-auto"
+                />
+              </button>
+            )}
           </div>
         )}
       </div>

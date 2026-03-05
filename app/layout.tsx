@@ -17,8 +17,8 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import { AppSkeleton } from '@/components/app-skeleton'
 
 export const metadata: Metadata = {
-  title: 'Knot Code',
-  description: 'Gateway-integrated code editor with AI coding agent',
+  title: 'KnotCode',
+  description: 'AI-powered code editor by OpenKnots',
   icons: {
     icon: '/favicon.png',
     apple: '/apple-touch-icon.png',
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="obsidian" className="dark" suppressHydrationWarning>
       <body className="antialiased">
-        <ErrorBoundary fallbackLabel="Knot Code encountered an error">
+        <ErrorBoundary fallbackLabel="KnotCode encountered an error">
           <ThemeProvider>
             <GatewayProvider>
               <GitHubAuthProvider>

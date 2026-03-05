@@ -1,4 +1,4 @@
-# Knot Code
+# KnotCode
 
 A browser-based and desktop code editor powered by an AI coding agent via the [OpenClaw](https://github.com/openclaw/openclaw) gateway. Think Cursor, but with your own gateway-integrated agent.
 
