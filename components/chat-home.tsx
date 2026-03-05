@@ -10,62 +10,15 @@ import { PermissionsToggle } from '@/components/permissions-toggle'
 import { useRepo } from '@/context/repo-context'
 import { useLocal } from '@/context/local-context'
 import { useGateway } from '@/context/gateway-context'
-import { useGitHubAuth } from '@/context/github-auth-context'
-import { useEditor } from '@/context/editor-context'
 import { emit } from '@/lib/events'
-import { getRecentFolders } from '@/context/local-context'
-import { getAgentConfig } from '@/lib/agent-session'
 
-const STATIC_SUGGESTIONS = [
-  {
-    icon: 'lucide:box',
-    label: 'Build a classic Snake game in this repo.',
-    color: 'var(--text-secondary)',
-    bg: 'color-mix(in srgb, var(--text-primary) 6%, transparent)',
-  },
-  {
-    icon: 'lucide:file-text',
-    label: 'Create a one-page PDF that summarizes this app.',
-    color: '#ef4444',
-    bg: 'color-mix(in srgb, #ef4444 8%, transparent)',
-  },
-  {
-    icon: 'lucide:pencil',
-    label: 'Create a plan to refactor the main module.',
-    color: '#22c55e',
-    bg: 'color-mix(in srgb, #22c55e 8%, transparent)',
-  },
-]
-
-function detectPrimaryLanguage(files: Array<{ path: string; is_dir: boolean }>): string | null {
-  const extCounts: Record<string, number> = {}
-  const langMap: Record<string, string> = {
-    ts: 'TypeScript',
-    tsx: 'TypeScript',
-    js: 'JavaScript',
-    jsx: 'JavaScript',
-    py: 'Python',
-    rs: 'Rust',
-    go: 'Go',
-    rb: 'Ruby',
-    java: 'Java',
-    swift: 'Swift',
-    kt: 'Kotlin',
-    cpp: 'C++',
-    c: 'C',
-    cs: 'C#',
-    php: 'PHP',
-    vue: 'Vue',
-    svelte: 'Svelte',
-  }
-  for (const f of files) {
-    if (f.is_dir) continue
-    const ext = f.path.split('.').pop()?.toLowerCase() ?? ''
-    if (langMap[ext]) extCounts[ext] = (extCounts[ext] ?? 0) + 1
-  }
-  const top = Object.entries(extCounts).sort((a, b) => b[1] - a[1])[0]
-  return top ? (langMap[top[0]] ?? null) : null
-}
+const STARTER_PROMPTS = [
+  { icon: 'lucide:book-open-text', label: 'Explain this codebase' },
+  { icon: 'lucide:bug', label: 'Find and fix bugs' },
+  { icon: 'lucide:test-tubes', label: 'Write tests for the open file' },
+  { icon: 'lucide:sparkles', label: 'Refactor for readability' },
+  { icon: 'lucide:circle-help', label: 'What does this function do?' },
+] as const
 
 interface Props {
   onSend: (text: string, mode: AgentMode) => void
@@ -91,7 +44,6 @@ export const ChatHome = memo(function ChatHome({
   const { repo } = useRepo()
   const local = useLocal()
   const { status } = useGateway()
-  const { files: openFiles } = useEditor()
 
   const repoShort = useMemo(
     () => repo?.fullName?.split('/').pop() ?? local.rootPath?.split('/').pop() ?? null,
@@ -139,56 +91,6 @@ export const ChatHome = memo(function ChatHome({
     [startOrSend, input, isComposing],
   )
 
-  const suggestions = useMemo(() => {
-    if (!hasWorkspace) return STATIC_SUGGESTIONS
-
-    const contextCards: typeof STATIC_SUGGESTIONS = []
-    const langLabel = detectPrimaryLanguage(local.localTree ?? []) ?? 'this project'
-
-    if (openFiles.length > 0) {
-      const recent = openFiles[openFiles.length - 1]
-      const name = recent.path.split('/').pop() || recent.path
-      contextCards.push({
-        icon: 'lucide:sparkles',
-        label: `Refactor ${name} — simplify and clean up.`,
-        color: 'var(--brand)',
-        bg: 'color-mix(in srgb, var(--brand) 8%, transparent)',
-      })
-    } else {
-      contextCards.push({
-        icon: 'lucide:box',
-        label: `Build a classic Snake game in this repo.`,
-        color: 'var(--text-secondary)',
-        bg: 'color-mix(in srgb, var(--text-primary) 6%, transparent)',
-      })
-    }
-
-    contextCards.push({
-      icon: 'lucide:file-text',
-      label: `Create a one-page PDF that summarizes this app.`,
-      color: '#ef4444',
-      bg: 'color-mix(in srgb, #ef4444 8%, transparent)',
-    })
-
-    if (branchName) {
-      contextCards.push({
-        icon: 'lucide:pencil',
-        label: `Create a plan to refactor the main module.`,
-        color: '#22c55e',
-        bg: 'color-mix(in srgb, #22c55e 8%, transparent)',
-      })
-    } else {
-      contextCards.push({
-        icon: 'lucide:test-tubes',
-        label: `Add tests for the core modules in ${langLabel}.`,
-        color: '#22c55e',
-        bg: 'color-mix(in srgb, #22c55e 8%, transparent)',
-      })
-    }
-
-    return contextCards.slice(0, 3)
-  }, [hasWorkspace, openFiles, local.localTree, branchName])
-
   return (
     <div className="flex-1 overflow-y-auto relative">
       <KnotBackground />
@@ -207,6 +109,10 @@ export const ChatHome = memo(function ChatHome({
             Let&apos;s build
           </h1>
 
+          <p className="mt-2 text-center text-[12px] text-[var(--text-tertiary)]">
+            Start with a prompt or ask your own question.
+          </p>
+
           {/* Workspace dropdown */}
           <button
             onClick={onSelectFolder}
@@ -217,6 +123,27 @@ export const ChatHome = memo(function ChatHome({
           </button>
         </div>
 
+        {/* Starter prompts */}
+        <div className="mb-4 sm:mb-5">
+          <div className="flex flex-wrap gap-2">
+            {STARTER_PROMPTS.map((starter) => (
+              <button
+                key={starter.label}
+                onClick={() => onSend(starter.label, agentMode)}
+                className="group inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_72%,transparent)] px-3 py-1.5 text-[12px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-disabled)] transition-all cursor-pointer"
+              >
+                <Icon
+                  icon={starter.icon}
+                  width={13}
+                  height={13}
+                  className="text-[var(--text-disabled)] group-hover:text-[var(--text-secondary)] transition-colors"
+                />
+                {starter.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* "Explore more" link */}
         <div className="flex justify-end mb-2">
           <button
@@ -225,33 +152,6 @@ export const ChatHome = memo(function ChatHome({
           >
             Explore more
           </button>
-        </div>
-
-        {/* Suggestion cards — 1-up mobile, 3-up desktop */}
-        <div className="codex-suggestion-grid grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 mb-4 sm:mb-5">
-          {suggestions.map((card, i) => (
-            <button
-              key={i}
-              onClick={() => onSend(card.label, agentMode)}
-              className="codex-suggestion-card group flex flex-col gap-2.5 p-3.5 sm:p-4 rounded-xl text-left cursor-pointer border border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-elevated)_70%,transparent)] backdrop-blur-sm hover:border-[var(--text-disabled)] transition-all w-full"
-            >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: card.bg }}
-              >
-                <Icon
-                  icon={card.icon}
-                  width={16}
-                  height={16}
-                  style={{ color: card.color }}
-                  className="opacity-80 group-hover:opacity-100 transition-opacity"
-                />
-              </div>
-              <p className="text-[12px] text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] leading-relaxed transition-colors">
-                {card.label}
-              </p>
-            </button>
-          ))}
         </div>
 
         {/* Composer */}

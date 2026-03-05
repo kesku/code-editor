@@ -55,6 +55,14 @@ function isSystemPromptMessage(msg: { role: string; content: string }): boolean 
   return SYSTEM_PROMPT_SIGNATURES.some((sig) => c.includes(sig))
 }
 
+export function hasConversationMessages(messages: ChatMessage[]): boolean {
+  return messages.some((msg) => {
+    if (isSystemPromptMessage(msg)) return false
+    if (msg.role === 'user') return true
+    return msg.role === 'assistant' && (msg.type ?? 'text') !== 'status'
+  })
+}
+
 /** Estimate token count from content length */
 function estimateTokens(content: string): number {
   return Math.ceil(content.length / 4)

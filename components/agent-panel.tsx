@@ -22,7 +22,7 @@ import {
   generateCommitMessageWithGateway,
   type CommitMessageChange,
 } from '@/lib/gateway-commit-message'
-import { MessageList } from '@/components/chat/message-list'
+import { MessageList, hasConversationMessages } from '@/components/chat/message-list'
 import { ChatInputBar } from '@/components/chat/chat-input-bar'
 import { emit, on } from '@/lib/events'
 import { copyToClipboard } from '@/lib/clipboard'
@@ -762,493 +762,498 @@ export function AgentPanel() {
   }, [appendMessage])
 
   // ─── Send message ─────────────────────────────────────────────
-  const sendMessage = useCallback(async () => {
-    const text = input.trim()
-    if (!text || sending) return
+  const sendMessage = useCallback(
+    async (rawText?: string, modeOverride?: AgentMode) => {
+      const text = (rawText ?? input).trim()
+      const modeForSend = modeOverride ?? agentMode
+      if (!text || sending) return
 
-    logChatDebug('send attempt', {
-      textLength: text.length,
-      mode: agentMode,
-      connected: isConnected,
-      gatewayStatus: status,
-      sessionKey,
-      attachmentCount: contextAttachments.length,
-      imageCount: imageAttachments.length,
-    })
-    setInput('')
-
-    // ─── Slash command interception ───────────────────────────
-    if (text.startsWith('/commit')) {
-      const commitMsg = text.replace(/^\/commit\s*/, '').trim()
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
+      logChatDebug('send attempt', {
+        textLength: text.length,
+        mode: modeForSend,
+        connected: isConnected,
+        gatewayStatus: status,
+        sessionKey,
+        attachmentCount: contextAttachments.length,
+        imageCount: imageAttachments.length,
       })
+      setInput('')
 
-      if (commitMsg) {
-        emit('agent-commit', { message: commitMsg })
+      // ─── Slash command interception ───────────────────────────
+      if (text.startsWith('/commit')) {
+        const commitMsg = text.replace(/^\/commit\s*/, '').trim()
         appendMessage({
           id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'Committing...',
+          role: 'user',
+          type: 'text',
+          content: text,
           timestamp: Date.now(),
         })
-        return
-      }
 
-      if (!isConnected) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Gateway disconnected — cannot generate commit message.',
-          timestamp: Date.now(),
-        })
-        return
-      }
-
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'status',
-        content: 'Generating commit message with gateway AI...',
-        timestamp: Date.now(),
-      })
-
-      try {
-        await ensureSessionInit()
-        const changes = await collectCommitChangesForGeneration()
-        if (changes.length === 0) {
+        if (commitMsg) {
+          emit('agent-commit', { message: commitMsg })
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'status',
-            content: 'No changes detected to commit.',
+            content: 'Committing...',
             timestamp: Date.now(),
           })
           return
         }
 
-        const generatedCommitMsg = await generateCommitMessageWithGateway({
-          sendRequest,
-          onEvent,
-          sessionKey,
-          repoFullName: repo?.fullName ?? local.remoteRepo ?? undefined,
-          branch: repo?.branch ?? local.gitInfo?.branch ?? undefined,
-          changes,
-        })
+        if (!isConnected) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Gateway disconnected — cannot generate commit message.',
+            timestamp: Date.now(),
+          })
+          return
+        }
 
         appendMessage({
           id: crypto.randomUUID(),
           role: 'system',
           type: 'status',
-          content: `Generated commit message: ${generatedCommitMsg}`,
+          content: 'Generating commit message with gateway AI...',
           timestamp: Date.now(),
         })
-        emit('agent-commit', { message: generatedCommitMsg })
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'Committing...',
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Generate commit message failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    if (text === '/changes') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      emit('open-changes-panel')
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'status',
-        content: 'Opening pre-commit review...',
-        timestamp: Date.now(),
-      })
-      return
-    }
-    if (text === '/diff') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      const changes = diffEngine.getChanges()
-      if (changes.length > 0) {
-        const summary = diffEngine.getSummary()
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `${summary.fileCount} file(s) changed: +${summary.additions} -${summary.deletions}\nFiles: ${changes.map((c) => c.path).join(', ')}`,
-          timestamp: Date.now(),
-        })
-      } else {
-        const dirtyFiles = files.filter((f) => f.dirty)
-        if (dirtyFiles.length > 0) {
+
+        try {
+          await ensureSessionInit()
+          const changes = await collectCommitChangesForGeneration()
+          if (changes.length === 0) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'status',
+              content: 'No changes detected to commit.',
+              timestamp: Date.now(),
+            })
+            return
+          }
+
+          const generatedCommitMsg = await generateCommitMessageWithGateway({
+            sendRequest,
+            onEvent,
+            sessionKey,
+            repoFullName: repo?.fullName ?? local.remoteRepo ?? undefined,
+            branch: repo?.branch ?? local.gitInfo?.branch ?? undefined,
+            changes,
+          })
+
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'status',
-            content: `${dirtyFiles.length} unsaved file(s): ${dirtyFiles.map((f) => f.path).join(', ')}`,
+            content: `Generated commit message: ${generatedCommitMsg}`,
+            timestamp: Date.now(),
+          })
+          emit('agent-commit', { message: generatedCommitMsg })
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: 'Committing...',
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Generate commit message failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+      if (text === '/changes') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        emit('open-changes-panel')
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'status',
+          content: 'Opening pre-commit review...',
+          timestamp: Date.now(),
+        })
+        return
+      }
+      if (text === '/diff') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        const changes = diffEngine.getChanges()
+        if (changes.length > 0) {
+          const summary = diffEngine.getSummary()
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `${summary.fileCount} file(s) changed: +${summary.additions} -${summary.deletions}\nFiles: ${changes.map((c) => c.path).join(', ')}`,
             timestamp: Date.now(),
           })
         } else {
+          const dirtyFiles = files.filter((f) => f.dirty)
+          if (dirtyFiles.length > 0) {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'status',
+              content: `${dirtyFiles.length} unsaved file(s): ${dirtyFiles.map((f) => f.path).join(', ')}`,
+              timestamp: Date.now(),
+            })
+          } else {
+            appendMessage({
+              id: crypto.randomUUID(),
+              role: 'system',
+              type: 'status',
+              content: 'No changes detected.',
+              timestamp: Date.now(),
+            })
+          }
+        }
+        return
+      }
+      if (text === '/unstage') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Unstage requires a local git repository.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        const staged =
+          local.gitInfo.status?.filter((s) => s.status !== '??').map((s) => s.path) ?? []
+        if (staged.length === 0) {
           appendMessage({
             id: crypto.randomUUID(),
             role: 'system',
             type: 'status',
-            content: 'No changes detected.',
+            content: 'No staged files to unstage.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        try {
+          await local.unstageFiles(staged)
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `Unstaged ${staged.length} file(s).`,
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Unstage failed: ${err instanceof Error ? err.message : String(err)}`,
             timestamp: Date.now(),
           })
         }
-      }
-      return
-    }
-    if (text === '/unstage') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Unstage requires a local git repository.',
-          timestamp: Date.now(),
-        })
         return
       }
-      const staged = local.gitInfo.status?.filter((s) => s.status !== '??').map((s) => s.path) ?? []
-      if (staged.length === 0) {
+      if (text === '/undo') {
         appendMessage({
           id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'No staged files to unstage.',
+          role: 'user',
+          type: 'text',
+          content: text,
           timestamp: Date.now(),
         })
-        return
-      }
-      try {
-        await local.unstageFiles(staged)
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `Unstaged ${staged.length} file(s).`,
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Unstage failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    if (text === '/undo') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Undo commit requires a local git repository.',
-          timestamp: Date.now(),
-        })
-        return
-      }
-      try {
-        await local.undoLastCommit()
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: 'Undid last commit. Changes are back in the working tree.',
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Undo failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    if (text === '/push') {
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'user',
-        type: 'text',
-        content: text,
-        timestamp: Date.now(),
-      })
-      if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: 'Push requires a local git repository.',
-          timestamp: Date.now(),
-        })
-        return
-      }
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'status',
-        content: `Pushing ${local.gitInfo.branch} to origin...`,
-        timestamp: Date.now(),
-      })
-      try {
-        await local.push()
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'status',
-          content: `Pushed ${local.gitInfo.branch} to origin.`,
-          timestamp: Date.now(),
-        })
-      } catch (err) {
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'system',
-          type: 'error',
-          content: `Push failed: ${err instanceof Error ? err.message : String(err)}`,
-          timestamp: Date.now(),
-        })
-      }
-      return
-    }
-    setSending(true)
-    streamStateRef.current.isSending = true
-
-    // Ensure session is initialized before first message
-    logChatDebug('ensuring chat session initialization', { sessionKey })
-    await ensureSessionInit()
-
-    // Build visual label for attachments
-    const attachLabels: string[] = []
-    for (const att of contextAttachments) {
-      attachLabels.push(
-        att.type === 'selection'
-          ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
-          : `📄 ${att.path.split('/').pop()}`,
-      )
-    }
-    for (const img of imageAttachments) {
-      attachLabels.push(`🖼 ${img.name}`)
-    }
-    const displayText = attachLabels.length > 0 ? `[${attachLabels.join(' · ')}]\n${text}` : text
-    const messageImages =
-      imageAttachments.length > 0
-        ? imageAttachments.map((img) => ({ name: img.name, dataUrl: img.dataUrl }))
-        : undefined
-    appendMessage({
-      id: crypto.randomUUID(),
-      role: 'user',
-      type: 'text',
-      content: displayText,
-      timestamp: Date.now(),
-      images: messageImages,
-    })
-
-    if (!isConnected) {
-      logChatDebug('send blocked: gateway disconnected', {
-        gatewayStatus: status,
-        sessionKey,
-      })
-      appendMessage({
-        id: crypto.randomUUID(),
-        role: 'system',
-        type: 'error',
-        content: 'Gateway disconnected — cannot reach agent.',
-        timestamp: Date.now(),
-      })
-      setSending(false)
-      streamStateRef.current.isSending = false
-      return
-    }
-
-    try {
-      const context = buildContext()
-      // Build attachment context
-      let attachCtx = ''
-      for (const att of contextAttachments) {
-        if (att.type === 'file') {
-          const ext = att.path.split('.').pop() ?? ''
-          attachCtx +=
-            `\n\n[Referenced file: ${att.path}]\n` +
-            '```' +
-            ext +
-            '\n' +
-            att.content.slice(0, 6000) +
-            '\n```'
-        } else if (att.type === 'selection') {
-          const ext = att.path.split('.').pop() ?? ''
-          attachCtx +=
-            `\n\n[Selected code: ${att.path}:${att.startLine}-${att.endLine}]\n` +
-            '```' +
-            ext +
-            '\n' +
-            att.content +
-            '\n```'
+        if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Undo commit requires a local git repository.',
+            timestamp: Date.now(),
+          })
+          return
         }
+        try {
+          await local.undoLastCommit()
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: 'Undid last commit. Changes are back in the working tree.',
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Undo failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+      if (text === '/push') {
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'user',
+          type: 'text',
+          content: text,
+          timestamp: Date.now(),
+        })
+        if (!local.localMode || !local.rootPath || !local.gitInfo?.is_repo) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: 'Push requires a local git repository.',
+            timestamp: Date.now(),
+          })
+          return
+        }
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'status',
+          content: `Pushing ${local.gitInfo.branch} to origin...`,
+          timestamp: Date.now(),
+        })
+        try {
+          await local.push()
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'status',
+            content: `Pushed ${local.gitInfo.branch} to origin.`,
+            timestamp: Date.now(),
+          })
+        } catch (err) {
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'system',
+            type: 'error',
+            content: `Push failed: ${err instanceof Error ? err.message : String(err)}`,
+            timestamp: Date.now(),
+          })
+        }
+        return
+      }
+      setSending(true)
+      streamStateRef.current.isSending = true
+
+      // Ensure session is initialized before first message
+      logChatDebug('ensuring chat session initialization', { sessionKey })
+      await ensureSessionInit()
+
+      // Build visual label for attachments
+      const attachLabels: string[] = []
+      for (const att of contextAttachments) {
+        attachLabels.push(
+          att.type === 'selection'
+            ? `📝 ${att.path.split('/').pop()}:${att.startLine}-${att.endLine}`
+            : `📄 ${att.path.split('/').pop()}`,
+        )
       }
       for (const img of imageAttachments) {
-        attachCtx += `\n\n[Attached screenshot: ${img.name}]`
+        attachLabels.push(`🖼 ${img.name}`)
       }
-      const modePrefix =
-        agentMode === 'ask'
-          ? '[Mode: Ask — discuss and answer questions. Do not make code changes unless explicitly asked.]\n'
-          : agentMode === 'plan'
-            ? '[Mode: Plan — outline a step-by-step plan before making changes. Present the plan to the user for approval before executing.]\n'
-            : '[Mode: Agent — make direct code changes and edits autonomously.]\n'
-      // Build silent context (not shown in chat UI, embedded in outbound gateway message)
-      const silentContext = [modePrefix, context || '', attachCtx].filter(Boolean).join('\n\n')
-      setContextAttachments([])
-      setImageAttachments([])
-      const idemKey = `ce-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-      sentKeysRef.current.add(idemKey)
-
-      setIsStreaming(true)
-      logChatDebug('chat.send request', {
-        sessionKey,
-        idempotencyKey: idemKey,
-        promptChars: text.length,
-        contextChars: silentContext.length,
-      })
-      const outboundMessage = buildGatewayMessage(text, silentContext)
-      const resp = (await sendRequest('chat.send', {
-        sessionKey,
-        message: outboundMessage,
-        idempotencyKey: idemKey,
-      })) as Record<string, unknown> | undefined
-
-      const respStatus = resp?.status as string | undefined
-      logChatDebug('chat.send response', {
-        status: respStatus ?? 'unknown',
-        hasReply: Boolean(resp?.reply || resp?.text || resp?.content),
-        responseKeys: resp ? Object.keys(resp) : [],
-      })
-      if (respStatus === 'started' || respStatus === 'in_flight' || respStatus === 'streaming') {
-        // Streaming — reply will arrive via onEvent('chat') handler
-        logChatDebug('waiting for streamed reply', {
-          idempotencyKey: idemKey,
-          status: respStatus,
-        })
-        return
-      }
-
-      // Synchronous reply (non-streaming fallback)
-      // Only process if the event handler hasn't already consumed this key
-      if (!sentKeysRef.current.has(idemKey) || handledKeysRef.current.has(idemKey)) return
-      sentKeysRef.current.delete(idemKey)
-      handledKeysRef.current.add(idemKey)
-      setTimeout(() => handledKeysRef.current.delete(idemKey), 10000)
-      const reply = String(resp?.reply ?? resp?.text ?? resp?.content ?? '')
-      if (!reply && respStatus) {
-        // Gateway acknowledged but no inline reply — likely streaming
-        logChatDebug('response acknowledged without inline reply', {
-          idempotencyKey: idemKey,
-          status: respStatus,
-        })
-        return
-      }
-      if (reply && !/^NO_REPLY$/i.test(reply.trim())) {
-        const editProposals = parseEditProposals(reply)
-        appendMessage({
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          type: editProposals.length > 0 ? 'edit' : 'text',
-          content: reply,
-          timestamp: Date.now(),
-          editProposals: editProposals.length > 0 ? editProposals : undefined,
-        })
-        emit('agent-reply')
-        logChatDebug('assistant reply appended from direct response', {
-          idempotencyKey: idemKey,
-          replyChars: reply.length,
-          editProposalCount: editProposals.length,
-        })
-      }
-      setIsStreaming(false)
-      setSending(false)
-      streamStateRef.current.isSending = false
-    } catch (err) {
-      logChatDebug('chat.send failed', {
-        error: err instanceof Error ? err.message : String(err),
-        sessionKey,
-      })
+      const displayText = attachLabels.length > 0 ? `[${attachLabels.join(' · ')}]\n${text}` : text
+      const messageImages =
+        imageAttachments.length > 0
+          ? imageAttachments.map((img) => ({ name: img.name, dataUrl: img.dataUrl }))
+          : undefined
       appendMessage({
         id: crypto.randomUUID(),
-        role: 'system',
-        type: 'error',
-        content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        role: 'user',
+        type: 'text',
+        content: displayText,
         timestamp: Date.now(),
+        images: messageImages,
       })
-      setIsStreaming(false)
-      setSending(false)
-      streamStateRef.current.isSending = false
-    }
-  }, [
-    input,
-    sending,
-    agentMode,
-    isConnected,
-    status,
-    sessionKey,
-    contextAttachments,
-    imageAttachments,
-    local,
-    repo,
-    files,
-    sendRequest,
-    onEvent,
-    buildContext,
-    appendMessage,
-    ensureSessionInit,
-    collectCommitChangesForGeneration,
-    logChatDebug,
-  ])
+
+      if (!isConnected) {
+        logChatDebug('send blocked: gateway disconnected', {
+          gatewayStatus: status,
+          sessionKey,
+        })
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'error',
+          content: 'Gateway disconnected — cannot reach agent.',
+          timestamp: Date.now(),
+        })
+        setSending(false)
+        streamStateRef.current.isSending = false
+        return
+      }
+
+      try {
+        const context = buildContext()
+        // Build attachment context
+        let attachCtx = ''
+        for (const att of contextAttachments) {
+          if (att.type === 'file') {
+            const ext = att.path.split('.').pop() ?? ''
+            attachCtx +=
+              `\n\n[Referenced file: ${att.path}]\n` +
+              '```' +
+              ext +
+              '\n' +
+              att.content.slice(0, 6000) +
+              '\n```'
+          } else if (att.type === 'selection') {
+            const ext = att.path.split('.').pop() ?? ''
+            attachCtx +=
+              `\n\n[Selected code: ${att.path}:${att.startLine}-${att.endLine}]\n` +
+              '```' +
+              ext +
+              '\n' +
+              att.content +
+              '\n```'
+          }
+        }
+        for (const img of imageAttachments) {
+          attachCtx += `\n\n[Attached screenshot: ${img.name}]`
+        }
+        const modePrefix =
+          modeForSend === 'ask'
+            ? '[Mode: Ask — discuss and answer questions. Do not make code changes unless explicitly asked.]\n'
+            : modeForSend === 'plan'
+              ? '[Mode: Plan — outline a step-by-step plan before making changes. Present the plan to the user for approval before executing.]\n'
+              : '[Mode: Agent — make direct code changes and edits autonomously.]\n'
+        // Build silent context (not shown in chat UI, embedded in outbound gateway message)
+        const silentContext = [modePrefix, context || '', attachCtx].filter(Boolean).join('\n\n')
+        setContextAttachments([])
+        setImageAttachments([])
+        const idemKey = `ce-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        sentKeysRef.current.add(idemKey)
+
+        setIsStreaming(true)
+        logChatDebug('chat.send request', {
+          sessionKey,
+          idempotencyKey: idemKey,
+          promptChars: text.length,
+          contextChars: silentContext.length,
+        })
+        const outboundMessage = buildGatewayMessage(text, silentContext)
+        const resp = (await sendRequest('chat.send', {
+          sessionKey,
+          message: outboundMessage,
+          idempotencyKey: idemKey,
+        })) as Record<string, unknown> | undefined
+
+        const respStatus = resp?.status as string | undefined
+        logChatDebug('chat.send response', {
+          status: respStatus ?? 'unknown',
+          hasReply: Boolean(resp?.reply || resp?.text || resp?.content),
+          responseKeys: resp ? Object.keys(resp) : [],
+        })
+        if (respStatus === 'started' || respStatus === 'in_flight' || respStatus === 'streaming') {
+          // Streaming — reply will arrive via onEvent('chat') handler
+          logChatDebug('waiting for streamed reply', {
+            idempotencyKey: idemKey,
+            status: respStatus,
+          })
+          return
+        }
+
+        // Synchronous reply (non-streaming fallback)
+        // Only process if the event handler hasn't already consumed this key
+        if (!sentKeysRef.current.has(idemKey) || handledKeysRef.current.has(idemKey)) return
+        sentKeysRef.current.delete(idemKey)
+        handledKeysRef.current.add(idemKey)
+        setTimeout(() => handledKeysRef.current.delete(idemKey), 10000)
+        const reply = String(resp?.reply ?? resp?.text ?? resp?.content ?? '')
+        if (!reply && respStatus) {
+          // Gateway acknowledged but no inline reply — likely streaming
+          logChatDebug('response acknowledged without inline reply', {
+            idempotencyKey: idemKey,
+            status: respStatus,
+          })
+          return
+        }
+        if (reply && !/^NO_REPLY$/i.test(reply.trim())) {
+          const editProposals = parseEditProposals(reply)
+          appendMessage({
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            type: editProposals.length > 0 ? 'edit' : 'text',
+            content: reply,
+            timestamp: Date.now(),
+            editProposals: editProposals.length > 0 ? editProposals : undefined,
+          })
+          emit('agent-reply')
+          logChatDebug('assistant reply appended from direct response', {
+            idempotencyKey: idemKey,
+            replyChars: reply.length,
+            editProposalCount: editProposals.length,
+          })
+        }
+        setIsStreaming(false)
+        setSending(false)
+        streamStateRef.current.isSending = false
+      } catch (err) {
+        logChatDebug('chat.send failed', {
+          error: err instanceof Error ? err.message : String(err),
+          sessionKey,
+        })
+        appendMessage({
+          id: crypto.randomUUID(),
+          role: 'system',
+          type: 'error',
+          content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          timestamp: Date.now(),
+        })
+        setIsStreaming(false)
+        setSending(false)
+        streamStateRef.current.isSending = false
+      }
+    },
+    [
+      input,
+      sending,
+      agentMode,
+      isConnected,
+      status,
+      sessionKey,
+      contextAttachments,
+      imageAttachments,
+      local,
+      repo,
+      files,
+      sendRequest,
+      onEvent,
+      buildContext,
+      appendMessage,
+      ensureSessionInit,
+      collectCommitChangesForGeneration,
+      logChatDebug,
+    ],
+  )
 
   // ─── Handle ⌘K inline edit requests ────────────────────────────
   useEffect(() => {
@@ -1526,8 +1531,7 @@ export function AgentPanel() {
         if (userIdx < 0) return prev
         const userMsg = prev[userIdx]
         queueMicrotask(() => {
-          setInput(userMsg.content)
-          setTimeout(() => sendMessage(), 50)
+          void sendMessage(userMsg.content)
         })
         return prev.slice(0, idx)
       })
@@ -1597,6 +1601,7 @@ export function AgentPanel() {
       .find((m) => m.role === 'user')
       ?.content.slice(0, 50)
       .replace(/\n/g, ' ') || null
+  const conversationStarted = hasConversationMessages(messages)
 
   return (
     <div
@@ -1641,7 +1646,7 @@ export function AgentPanel() {
         modelName={modelInfo.current || undefined}
         contextTokens={contextTokens}
       />
-      {messages.length > 0 && (
+      {conversationStarted && (
         <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-elevated)] px-2.5 py-1 shrink-0">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* Font size controls */}
@@ -1704,19 +1709,16 @@ export function AgentPanel() {
       )}
 
       {/* Empty states — full bleed */}
-      {messages.length === 0 && !isConnected && (
+      {!conversationStarted && !isConnected && (
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <AgentConnectPrompt />
         </div>
       )}
-      {messages.length === 0 && isConnected && (
+      {!conversationStarted && isConnected && (
         <ChatHome
           onSend={(text, mode) => {
             setAgentMode(mode)
-            setInput(text)
-            setTimeout(() => {
-              sendMessage()
-            }, 50)
+            void sendMessage(text, mode)
           }}
           onSelectFolder={() => emit('open-folder')}
           onCloneRepo={() => emit('open-folder')}
@@ -1727,7 +1729,7 @@ export function AgentPanel() {
       )}
 
       {/* Messages */}
-      {messages.length > 0 && (
+      {conversationStarted && (
         <MessageList
           messages={messages}
           streamBuffer={streamBuffer}
@@ -1744,7 +1746,7 @@ export function AgentPanel() {
       )}
 
       {/* Input section — hidden when ChatHome is showing */}
-      {(messages.length > 0 || !isConnected) && (
+      {(conversationStarted || !isConnected) && (
         <ChatInputBar
           input={input}
           setInput={setInput}
