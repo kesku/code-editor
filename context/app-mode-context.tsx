@@ -60,15 +60,18 @@ export function AppModeProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_VISIBLE', panel: panel as PanelId, visible })
     }
 
-    // Ensure active view is valid in this mode
-    if (!spec.visibleViews.includes(activeViewRef.current)) {
-      setView(spec.defaultView)
-    }
-
-    // Chat mode is a full-size chat-first experience.
+    // Ensure active view is valid in this mode.
+    // Chat mode is always chat-first, so force the chat view.
     if (mode === 'chat') {
-      setEditorCollapsed(true)
+      if (activeViewRef.current !== 'chat') {
+        setView('chat')
+      }
+      // Force collapse (bypass editor-view guard in setEditorCollapsed).
+      dispatch({ type: 'SET_EDITOR_COLLAPSED', collapsed: true })
     } else {
+      if (!spec.visibleViews.includes(activeViewRef.current)) {
+        setView(spec.defaultView)
+      }
       setEditorCollapsed(false)
     }
 
