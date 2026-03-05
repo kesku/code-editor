@@ -816,8 +816,8 @@ export function GitView() {
                       {staged && isLocalMode && (
                         <button
                           onClick={e => { e.stopPropagation(); handleUnstageSingle(entry.path) }}
-                          className="hidden group-hover:flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-[var(--radius-sm)] hover:bg-[var(--bg-elevated)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors"
-                          title="Unstage file"
+                          className="flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-[var(--radius-sm)] hover:bg-[var(--bg-elevated)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors"
+                          title="Unadd (unstage file)"
                         >
                           <Icon icon="lucide:minus" width={10} height={10} />
                         </button>
@@ -825,7 +825,7 @@ export function GitView() {
                       {!staged && isLocalMode && entry.source === 'git' && (
                         <button
                           onClick={e => { e.stopPropagation(); handleStageSingle(entry.path) }}
-                          className="hidden group-hover:flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-[var(--radius-sm)] hover:bg-[var(--bg-elevated)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors"
+                          className="flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-[var(--radius-sm)] hover:bg-[var(--bg-elevated)] text-[var(--text-disabled)] hover:text-[var(--text-secondary)] cursor-pointer transition-colors"
                           title="Stage file"
                         >
                           <Icon icon="lucide:plus" width={10} height={10} />
@@ -1144,15 +1144,7 @@ export function GitView() {
                     )}
                   </div>
 
-                  <button
-                    onClick={() => {
-                      // TODO: re-enable when PR view is introduced
-                    }}
-                    className="w-full flex items-center justify-center gap-1.5 h-[28px] rounded-[var(--radius-sm)] text-[10px] font-medium text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] cursor-pointer transition-colors border border-transparent hover:border-[var(--border)]"
-                  >
-                    <Icon icon="lucide:git-pull-request-create-arrow" width={11} height={11} />
-                    Create Pull Request
-                  </button>
+
                 </div>
               )}
             </div>

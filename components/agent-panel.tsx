@@ -150,12 +150,11 @@ export function AgentPanel() {
   const local = useLocal()
   const permissions = usePermissions()
 
-  const [chatId, setChatId] = useState(() => crypto.randomUUID())
-  // Each chat gets its own gateway session for isolation
-  const sessionKey = `${CODE_EDITOR_SESSION_KEY}:${chatId.slice(0, 8)}`
+  // Single persistent session — no multi-chat
+  const sessionKey = CODE_EDITOR_SESSION_KEY
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
-      const saved = localStorage.getItem('code-editor:chat:' + chatId)
+      const saved = localStorage.getItem('code-editor:chat:main')
       return saved ? JSON.parse(saved) : []
     } catch { return [] }
   })
@@ -271,12 +270,12 @@ export function AgentPanel() {
       // Label the session only after init succeeds
       sendRequest('sessions.patch', {
         key: sessionKey,
-        label: `Knot Code — ${chatId.slice(0, 8)}`,
+        label: 'Knot Code',
       }).catch(() => {})
     } catch {
       // Non-fatal — session still works without explicit system prompt
     }
-  }, [sendRequest, sessionKey, chatId])
+  }, [sendRequest, sessionKey])
 
   // ─── Listen for chat events (streaming replies) ───────────────
   useEffect(() => {
@@ -633,86 +632,14 @@ export function AgentPanel() {
     return steps
   }, [])
 
-  // Emit session update to workspace sidebar
-  const emitSessionUpdate = useCallback((msg: ChatMessage) => {
-    const summary = diffEngine.getSummary()
-    window.dispatchEvent(new CustomEvent('chat-session-update', {
-      detail: {
-        id: chatId,
-        title: msg.content.slice(0, 40).replace(/\n/g, ' ') || 'New Chat',
-        preview: msg.content.slice(0, 80),
-        timestamp: Date.now(),
-        fileCount: summary.fileCount || undefined,
-        additions: summary.additions || undefined,
-        deletions: summary.deletions || undefined,
-        mode: agentMode,
-      }
-    }))
-  }, [agentMode, chatId])
-
   // Persist messages to localStorage
   useEffect(() => {
     if (messages.length > 0) {
-      try { localStorage.setItem('code-editor:chat:' + chatId, JSON.stringify(messages.slice(-50))) } catch {}
+      try { localStorage.setItem('code-editor:chat:main', JSON.stringify(messages.slice(-50))) } catch {}
     }
-  }, [messages, chatId])
+  }, [messages])
 
-  // Switch to a different chat session by id — full state reset
-  const switchToChat = useCallback((newId: string) => {
-    if (newId === chatId) return
-    try { localStorage.setItem('code-editor:chat:' + chatId, JSON.stringify(messages.slice(-50))) } catch {}
 
-    // Clear all in-flight tracking to prevent stale keys leaking across sessions
-    sentKeysRef.current.clear()
-    handledKeysRef.current.clear()
-
-    setChatId(newId)
-    try {
-      const saved = localStorage.getItem('code-editor:chat:' + newId)
-      setMessages(saved ? JSON.parse(saved) : [])
-    } catch { setMessages([]) }
-
-    // Reset all transient state
-    setStreamBuffer('')
-    setSending(false)
-    setIsStreaming(false)
-    setThinkingTrail([])
-    setInput('')
-    setContextAttachments([])
-    setImageAttachments([])
-    setPlanSteps([])
-    setActiveDiff(null)
-    setConfirmClear(false)
-    diffEngine.clear()
-
-    sessionInitRef.current = false
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem(`${SESSION_INIT_STORAGE_KEY}:${CODE_EDITOR_SESSION_KEY}:${newId.slice(0, 8)}:v${CODE_EDITOR_SYSTEM_PROMPT_VERSION}`)
-    }
-  }, [chatId, messages])
-
-  // On mount, pick up any pending chat switch (panel may have been unmounted when event fired)
-  useEffect(() => {
-    const pending = (window as any).__pendingSwitchChat as string | undefined
-    if (pending && pending !== chatId) {
-      switchToChat(pending)
-    }
-    ;(window as any).__pendingSwitchChat = undefined
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Listen for chat switch from workspace sidebar
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const newId = (e as CustomEvent).detail?.id
-      if (newId) {
-        ;(window as any).__pendingSwitchChat = undefined
-        switchToChat(newId)
-      }
-    }
-    window.addEventListener('switch-chat', handler)
-    return () => window.removeEventListener('switch-chat', handler)
-  }, [switchToChat])
 
   const appendMessage = useCallback((msg: ChatMessage) => {
     setMessages(prev => {
@@ -720,17 +647,9 @@ export function AgentPanel() {
       if (last && last.role === msg.role && last.content === msg.content && Math.abs(last.timestamp - msg.timestamp) < 2000) {
         return prev
       }
-      const next = [...prev, msg]
-      if (msg.role === 'user' && next.filter(m => m.role === 'user').length === 1) {
-        queueMicrotask(() => {
-          window.dispatchEvent(new CustomEvent('chat-session-update', {
-            detail: { id: chatId, title: msg.content.slice(0, 40), preview: msg.content.slice(0, 80), timestamp: Date.now() }
-          }))
-        })
-      }
-      return next
+      return [...prev, msg]
     })
-  }, [chatId])
+  }, [])
 
   // ─── Commit result listener ──────────────────────────────────
   useEffect(() => {
@@ -835,19 +754,6 @@ export function AgentPanel() {
       }
       return
     }
-    if (text === '/pr') {
-      appendMessage({ id: crypto.randomUUID(), role: 'user', type: 'text', content: text, timestamp: Date.now() })
-      window.dispatchEvent(new CustomEvent('open-prs-panel'))
-      appendMessage({ id: crypto.randomUUID(), role: 'system', type: 'status', content: 'Opening pull requests...', timestamp: Date.now() })
-      return
-    }
-    if (text === '/pr create') {
-      appendMessage({ id: crypto.randomUUID(), role: 'user', type: 'text', content: text, timestamp: Date.now() })
-      window.dispatchEvent(new CustomEvent('open-pr-create'))
-      appendMessage({ id: crypto.randomUUID(), role: 'system', type: 'status', content: 'Opening PR creation form...', timestamp: Date.now() })
-      return
-    }
-
     setSending(true)
 
     // Ensure session is initialized before first message
@@ -1185,22 +1091,7 @@ export function AgentPanel() {
     })
   }, [sendMessage])
 
-  const handleForkConversation = useCallback((msgId: string) => {
-    setMenuOpenId(null)
-    const idx = messages.findIndex(m => m.id === msgId)
-    if (idx < 0) return
-    const forkedMessages = messages.slice(0, idx + 1)
-    const newId = crypto.randomUUID()
-    try {
-      localStorage.setItem('code-editor:chat:' + chatId, JSON.stringify(messages.slice(-50)))
-      localStorage.setItem('code-editor:chat:' + newId, JSON.stringify(forkedMessages))
-    } catch {}
-    const title = forkedMessages.find(m => m.role === 'user')?.content.slice(0, 40) || 'Forked chat'
-    window.dispatchEvent(new CustomEvent('chat-session-update', {
-      detail: { id: newId, title: `Fork: ${title}`, preview: title, timestamp: Date.now() }
-    }))
-    window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id: newId } }))
-  }, [messages, chatId])
+
 
   const handleEditAndResend = useCallback((msgId: string) => {
     setMenuOpenId(null)
@@ -1218,10 +1109,25 @@ export function AgentPanel() {
       setTimeout(() => setConfirmClear(false), 3000)
       return
     }
-    // Start a brand-new chat session instead of just wiping messages
-    const newId = crypto.randomUUID()
-    switchToChat(newId)
-  }, [confirmClear, switchToChat])
+    // Clear everything — single session reset
+    setMessages([])
+    setStreamBuffer('')
+    setSending(false)
+    setIsStreaming(false)
+    setThinkingTrail([])
+    setInput('')
+    setContextAttachments([])
+    setImageAttachments([])
+    setPlanSteps([])
+    setActiveDiff(null)
+    setConfirmClear(false)
+    diffEngine.clear()
+    sessionInitRef.current = false
+    try { localStorage.removeItem('code-editor:chat:main') } catch {}
+    try {
+      sessionStorage.removeItem(`${SESSION_INIT_STORAGE_KEY}:${sessionKey}:v${CODE_EDITOR_SYSTEM_PROMPT_VERSION}`)
+    } catch {}
+  }, [confirmClear, sessionKey])
 
   // ─── Diff overlay ─────────────────────────────────────────────
   if (activeDiff) {
@@ -1270,16 +1176,6 @@ export function AgentPanel() {
             onSend={(text, mode) => {
               setAgentMode(mode)
               setInput(text)
-              // Emit session to sidebar immediately
-              window.dispatchEvent(new CustomEvent('chat-session-update', {
-                detail: {
-                  id: chatId,
-                  title: text.slice(0, 40),
-                  preview: text.slice(0, 80),
-                  timestamp: Date.now(),
-                  mode,
-                }
-              }))
               setTimeout(() => { sendMessage() }, 50)
             }}
             onSelectFolder={() => window.dispatchEvent(new CustomEvent('open-folder'))}
@@ -1369,13 +1265,7 @@ export function AgentPanel() {
                       <Icon icon="lucide:pencil" width={12} height={12} /> Edit & resend
                     </button>
                   )}
-                  <button
-                    onClick={() => handleForkConversation(msg.id)}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] transition-colors cursor-pointer"
-                  >
-                    <Icon icon="lucide:git-fork" width={12} height={12} /> Fork from here
-                  </button>
-                  <div className="border-t border-[var(--border)] my-0.5" />
+
                   <button
                     onClick={() => handleDeleteMessage(msg.id)}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-[var(--color-deletions,#ef4444)] hover:bg-[color-mix(in_srgb,var(--color-deletions,#ef4444)_6%,transparent)] transition-colors cursor-pointer"

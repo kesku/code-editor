@@ -105,6 +105,8 @@ interface TerminalPaneProps {
   onToggleFloating?: () => void
   cwd?: string | null
   onFileOpen?: (path: string, line?: number, col?: number) => void
+  /** Hide internal header (used when parent provides its own header, e.g. TUI center mode) */
+  hideHeader?: boolean
 }
 
 function TerminalPane({
@@ -116,6 +118,7 @@ function TerminalPane({
   onToggleFloating,
   cwd,
   onFileOpen,
+  hideHeader,
 }: TerminalPaneProps) {
   const [terminalId, setTerminalId] = useState<number | null>(null)
   const [terminalError, setTerminalError] = useState<string | null>(null)
@@ -334,15 +337,12 @@ function TerminalPane({
 
   return (
     <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-      {/* Header (single-terminal mode) */}
+      {/* Header (single-terminal mode) — hidden in center/TUI mode */}
+      {!hideHeader && (
       <div className="flex items-center h-9 bg-[var(--bg-secondary)] border-b border-[var(--border)] px-2 gap-1 shrink-0">
         <span className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-wider mr-2 shrink-0">
           Terminal
         </span>
-
-        <div className="text-[11px] text-[var(--text-tertiary)]">
-          Single session
-        </div>
 
         <div className="flex-1" />
 
@@ -365,11 +365,8 @@ function TerminalPane({
             <Icon icon={floating ? 'lucide:pin' : 'lucide:app-window'} width={13} height={13} />
           </button>
         )}
-
-        {/* <span className="text-[10px] text-[var(--text-tertiary)] font-mono ml-1 shrink-0">
-          {isDesktop ? 'PTY' : 'web'}
-        </span> */}
       </div>
+      )}
 
       {/* Terminal viewport */}
       <div className="flex-1 overflow-hidden bg-[var(--bg)]">
@@ -443,16 +440,20 @@ export function TerminalPanel({ visible, height, onHeightChange, floating, onTog
     document.body.style.userSelect = 'none'
   }, [height, onHeightChange])
 
+  const isCenter = height >= 9000 // TUI center mode — fill parent flex
+
   return (
     <div
-      className={`flex flex-col border-t border-[var(--border)] ${visible ? '' : 'hidden'}`}
-      style={{ height: `${height}px`, minHeight: 120 }}
+      className={`flex flex-col ${isCenter ? 'flex-1' : 'border-t border-[var(--border)]'} ${visible ? '' : 'hidden'}`}
+      style={isCenter ? undefined : { height: `${height}px`, minHeight: 120 }}
     >
-      {/* Resize handle */}
-      <div
-        onMouseDown={onMouseDown}
-        className="h-[3px] cursor-row-resize hover:bg-[var(--brand)] transition-colors shrink-0"
-      />
+      {/* Resize handle — hidden in center mode */}
+      {!isCenter && (
+        <div
+          onMouseDown={onMouseDown}
+          className="h-[3px] cursor-row-resize hover:bg-[var(--brand)] transition-colors shrink-0"
+        />
+      )}
 
       {/* Pane area */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -462,9 +463,10 @@ export function TerminalPanel({ visible, height, onHeightChange, floating, onTog
           isDesktop={isDesktop}
           themeVersion={themeVersion}
           floating={floating}
-          onToggleFloating={onToggleFloating}
+          onToggleFloating={isCenter ? undefined : onToggleFloating}
           cwd={local.localMode ? local.rootPath : null}
           onFileOpen={handleFileOpen}
+          hideHeader={isCenter}
         />
       </div>
     </div>

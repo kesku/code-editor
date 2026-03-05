@@ -326,7 +326,7 @@ export default function EditorLayout() {
   const terminalFloating = layout.isFloating('terminal')
 
   // ─── Minimal state ──────────────────────────────────
-  const [activeChatId, setActiveChatId] = useState<string | null>(null)
+
   const [isTauriDesktop, setIsTauriDesktop] = useState(false)
   const [isMacTauri, setIsMacTauri] = useState(false)
 
@@ -674,10 +674,6 @@ export default function EditorLayout() {
       {/* Workspace Sidebar */}
       {mode !== 'tui' && (
       <WorkspaceSidebar
-        activeId={activeChatId ?? ''}
-        onSelect={(id) => { setActiveChatId(id); (window as any).__pendingSwitchChat = id; setView('editor'); layout.show('chat'); setTimeout(() => window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id } })), 80) }}
-        onNew={() => { const newId = crypto.randomUUID(); setActiveChatId(newId); (window as any).__pendingSwitchChat = newId; setView('editor'); layout.show('chat'); setTimeout(() => window.dispatchEvent(new CustomEvent('switch-chat', { detail: { id: newId } })), 80) }}
-        onDelete={(id) => { if (id === activeChatId) { setActiveChatId(null) } }}
         collapsed={sidebarCollapsed}
         onToggle={() => layout.toggle('sidebar')}
         repoName={repo?.fullName || localRootPath?.split('/').pop()}
